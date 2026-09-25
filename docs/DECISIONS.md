@@ -70,5 +70,12 @@ Each decision lists the alternatives and why the simplest production-ready optio
 - **Decision**: The mock is used only when `ACC_ENABLE_MOCKS=true`, no real key is set, and `NODE_ENV` isn't production. Its text starts with `[MOCK]`, runs are stored with `model_provider='mock'`, and the UI shows a Mock badge everywhere.
 - **Why**: The project rule forbids fake integrations. This lets the whole pipeline (queue, tools, database, approvals, logs, UI) be built and tested before the API key exists, without anything being mistaken for real output.
 
+## ADR-020 — Orchestration: model-written plan, code-enforced execution
+- **Alternatives**: a free-form orchestrator agent with a `delegate` tool it calls whenever it likes; Managed Agents multi-agent sessions.
+- **Why**: A validated plan object (known agents, ≤6 steps, backwards-only dependencies) makes routing testable, visible to Aamir before the work is judged, and cheap to reason about. Deterministic execution guarantees that dependencies are respected, failures skip dependants instead of cascading silently, cancellation is honoured between steps, and specialists only see the outputs they depend on (less context, less prompt-injection surface). Steps run one at a time for now; running independent steps in parallel is a later optimisation.
+
+## ADR-021 — Specialists declare their current limitations
+- **Why**: The brief forbids fake integrations. Rather than hide agents until their tools exist, each specialist states what it can't do yet (e.g. Research has no web access until M8). The planner sees this and plans around it, the agent flags it in `blockers`/`unverifiedClaims`, and the UI shows it on the Agents page. Each limitation is removed when its milestone lands.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

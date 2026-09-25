@@ -19,7 +19,8 @@
     "dev:web": "pnpm --filter @acc/web dev",
     "build:web": "pnpm --filter @acc/web build",
     "e2e": "playwright test",
-    "dev:worker": "pnpm --filter @acc/worker dev"
+    "dev:worker": "pnpm --filter @acc/worker dev",
+    "eval:routing": "pnpm --filter @acc/agents eval:routing"
   },
   "devDependencies": {
     "@playwright/test": "~1.56.1",

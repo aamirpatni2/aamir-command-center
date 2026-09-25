@@ -10,7 +10,7 @@ import { PageHeader } from "../components/Layout.js";
 import { ModelBanner } from "./TasksPage.js";
 
 interface AgentsInfo {
-  agents: { id: string; description: string; tools: string[]; model: string; effort: string | null; maxSteps: number }[];
+  agents: { id: string; description: string; limitations: string | null; tools: string[]; model: string; effort: string | null; maxSteps: number }[];
   model: { available: boolean; mock: boolean; reason?: string };
 }
 
@@ -34,15 +34,13 @@ export function AgentsPage() {
         {info.data?.agents.map((a) => (
           <Card key={a.id} title={<span className="capitalize">{a.id}</span>}>
             <p className="text-sm text-ink-2">{a.description}</p>
+            {a.limitations && <p className="mt-2 text-xs text-status-warning">Limited for now: {a.limitations}</p>}
             <div className="mt-3 flex flex-wrap gap-1.5">
               {a.tools.map((t) => <span key={t} className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-ink-2">{t}</span>)}
             </div>
             <p className="mt-3 text-xs text-ink-3">{a.model} · effort {a.effort ?? "default"} · max {a.maxSteps} steps</p>
           </Card>
         ))}
-        <Card>
-          <p className="text-sm text-ink-2">Specialist agents (Sales, WhatsApp, Content, Research, Student, Marketing, Analytics, Course) join in Milestones 4–12.</p>
-        </Card>
       </div>
 
       <Card

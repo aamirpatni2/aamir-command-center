@@ -29,7 +29,9 @@ describe("tasks API", () => {
   it("GET /api/agents lists the orchestrator and reports the mock model", async () => {
     const res = await ctx.app.inject({ method: "GET", url: "/api/agents", headers: viewer.headers });
     expect(res.statusCode).toBe(200);
-    expect(res.json().agents.map((a: { id: string }) => a.id)).toContain("orchestrator");
+    const ids = res.json().agents.map((a: { id: string }) => a.id);
+    expect(ids).toEqual(["orchestrator", "sales", "whatsapp", "content", "research", "student", "marketing", "analytics", "course"]);
+    expect(res.json().agents.find((a: { id: string }) => a.id === "research").limitations).toContain("web access");
     expect(res.json().model).toEqual({ available: true, mock: true });
   });
 
@@ -56,7 +58,7 @@ describe("tasks API", () => {
   });
 
   it("task detail shows runs, tool steps and hides the system prompt body", async () => {
-    const created = await ctx.app.inject({ method: "POST", url: "/api/tasks", headers: operator.headers, payload: { input: "Course fee kitni hai?" } });
+    const created = await ctx.app.inject({ method: "POST", url: "/api/tasks", headers: operator.headers, payload: { input: "Write a Reel script about course fees" } });
     const id = created.json().task.id;
     expect(await runWorker(id)).toBe("COMPLETED");
 
@@ -64,13 +66,19 @@ describe("tasks API", () => {
     const body = res.json();
     expect(body.task.status).toBe("COMPLETED");
     expect(body.task.requestedBy).toBe("operator user"); // a name, never an internal id
-    expect(body.runs).toHaveLength(1);
-    expect(body.runs[0]).toMatchObject({ agentId: "orchestrator", modelProvider: "mock", toolCallCount: 1 });
+    // Demo mock: planner (kb.search + plan) → content step → review.
+    expect(body.runs.map((r: { agentId: string }) => r.agentId)).toEqual(["orchestrator", "content", "orchestrator"]);
+    expect(body.runs[0]).toMatchObject({ modelProvider: "mock" });
+    expect(body.steps).toEqual([expect.objectContaining({ position: 1, agentId: "content", status: "COMPLETED", dependsOn: [] })]);
+    expect(body.task.plan).toMatchObject({ steps: [expect.objectContaining({ agent: "content" })] });
     expect(body.messages.find((m: { role: string }) => m.role === "system").content).toEqual({ text: "(system prompt)" });
     expect(body.messages.some((m: { toolName: string }) => m.toolName === "kb.search")).toBe(true);
 
     const runs = await ctx.app.inject({ method: "GET", url: "/api/agent-runs", headers: viewer.headers });
-    expect(runs.json().runs[0]).toMatchObject({ agentId: "orchestrator", status: "COMPLETED", mock: true, toolsUsed: ["kb.search"], taskTitle: "Course fee kitni hai?" });
+    // Newest first: the planner is the oldest orchestrator run of this task.
+    const planner = runs.json().runs.filter((r: { agentId: string; taskId: string }) => r.agentId === "orchestrator" && r.taskId === id).at(-1);
+    expect(planner).toMatchObject({ status: "COMPLETED", mock: true, taskTitle: "Write a Reel script about course fees" });
+    expect(planner.toolsUsed).toEqual(expect.arrayContaining(["kb.search", "finish"]));
   });
 
   it("cancel: open task → CANCELLED; again → 409; the worker then skips it", async () => {

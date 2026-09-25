@@ -36,7 +36,19 @@ interface ModelProvider {
 - `packages/agents/src/runtime/execute-task.ts` — claims a `QUEUED` task atomically (duplicate jobs are no-ops), runs the Orchestrator, and never overwrites a cancellation that happened mid-run.
 - `apps/worker` — BullMQ consumer (concurrency 2, **no automatic retries** so side effects can't repeat), publishes events on Redis pub/sub; a crash marks the task `FAILED` rather than leaving it `RUNNING`.
 - Internal tools so far: `kb.search` (approved knowledge only; keyword search until vectors land in M8) and `memory.propose` (stores `proposed` memory only).
-- In M3 the Orchestrator answers directly with those tools; delegation to specialists is Milestone 4.
+- In M3 the Orchestrator answered directly with those tools; M4 added delegation (below).
+
+### As built (Milestone 4): plan → delegate → verify → summarise
+`packages/agents/src/orchestration/orchestrate.ts`. The model decides; code enforces the structure.
+1. **Plan**: the Orchestrator (effort high, tools `kb.search`, `memory.propose`) receives the specialist catalogue (descriptions + current limitations) and must return a plan through `finish`, validated by `planSchema`: `intent`, output `language`, either `directAnswer` (no delegation, one model call) or 1–6 `steps` `{agent, instruction, acceptance, dependsOn}`. The agent enum only contains real specialists; `dependsOn` may only point to earlier steps, so cycles are impossible. Invalid plans are returned to the model to fix.
+2. **Delegate**: steps run in order. A step receives its instruction, acceptance criteria, language, its own limitation, and only the outputs of the steps it depends on, wrapped in `<step_output>` tags and labelled as data. If a dependency failed, the step is skipped (`CANCELLED`) with the reason; independent steps still run. Cancellation is checked before every step. Each specialist returns `stepResultSchema` (`summary`, `output`, `sources`, `unverifiedClaims`, `blockers`).
+3. **Verify + summarise**: a review run (`orchestratorReview`, effort medium) gets every step's instruction, acceptance, status and output, checks criteria and conflicts (with `kb.search`), and returns `answer`, `issues`, `nextSteps`. If the review fails, the raw step outputs are returned so work is never lost.
+4. **Status**: `WAITING_APPROVAL` if any action awaits approval, `FAILED` if planning failed or no step produced a result, otherwise `COMPLETED` with issues listed.
+Persistence: `agent_tasks.plan`, one `agent_steps` row per step (status tracked), specialist and review runs link to the planner run via `parent_run_id`, and specialist runs link to their step via `step_id`.
+
+Specialists today: all eight exist with prompts in `agents/<id>/prompt.md` + `agents/_shared.md`. Until their data/tools arrive (CRM M5, students M6, web M8, analytics M12) each carries a `limitations` note that the planner sees and the agent must respect. For example, the Research Agent returns every time-sensitive claim as unverified because it has no web access yet.
+
+Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, real model). CI tests check the guard-rails (schema, dependencies, failure handling) with scripted mocks.
 
 ## 2. Orchestrator
 

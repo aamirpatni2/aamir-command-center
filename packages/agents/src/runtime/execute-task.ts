@@ -1,11 +1,10 @@
 import type { Logger } from "pino";
 import { and, eq, schema, writeAudit, type Database } from "@acc/database";
 import type { TaskStatus } from "@acc/shared";
-import { AGENTS } from "../definitions/index.js";
+import { orchestrate, type OrchestrationResult } from "../orchestration/orchestrate.js";
 import type { ResolvedModel } from "../model/registry.js";
 import type { ToolRegistry } from "../tools/registry.js";
 import type { TaskEventSink } from "./events.js";
-import { AgentRunner } from "./runner.js";
 
 export interface ExecuteTaskDeps {
   db: Database;
@@ -17,8 +16,7 @@ export interface ExecuteTaskDeps {
 }
 
 /**
- * Runs a queued task. Milestone 3: the Orchestrator handles the task directly with its own tools.
- * Milestone 4 adds planning and delegation to specialist agents.
+ * Runs a queued task through the Orchestrator (plan → delegate → verify → summarise).
  */
 export async function executeTask(taskId: string, deps: ExecuteTaskDeps): Promise<TaskStatus | null> {
   const { db, events, logger } = deps;
@@ -48,26 +46,23 @@ export async function executeTask(taskId: string, deps: ExecuteTaskDeps): Promis
     return final;
   };
 
-  const agent = AGENTS.orchestrator!;
-  let resolved;
+  let result: OrchestrationResult;
   try {
-    resolved = deps.resolve(agent.model);
+    result = await orchestrate({ id: taskId, input: task.input }, deps);
   } catch (e) {
+    // Model not configured, or an unexpected error outside a run.
     return finish("FAILED", { error: (e as Error).message });
   }
 
-  const runner = new AgentRunner({ db, tools: deps.tools, events, logger });
-  const today = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: "Asia/Karachi" }).format(new Date());
-  const result = await runner.run({
-    taskId,
-    agent,
-    input: `Today is ${today} (Pakistan time).\n\nRequest from Aamir:\n${task.input}`,
-    provider: resolved.provider,
-    model: resolved.model,
-  });
-
   return finish(result.status, {
-    result: { text: result.text, output: result.output ?? null, approvalIds: result.approvalIds, runId: result.runId, mock: resolved.provider.isMock },
-    error: result.errorMessage ?? null,
+    result: {
+      text: result.text,
+      issues: result.issues,
+      nextSteps: result.nextSteps,
+      approvalIds: result.approvalIds,
+      steps: result.steps.map((s) => ({ position: s.position, agent: s.agent, status: s.status, runId: s.runId ?? null, error: s.error ?? null })),
+      mock: result.mock,
+    },
+    error: result.error ?? null,
   });
 }

@@ -17,7 +17,7 @@ const deps = (resolve: Parameters<typeof executeTask>[1]["resolve"], events = ne
 });
 
 describe("executeTask", () => {
-  it("runs the orchestrator and completes the task", async () => {
+  it("runs the orchestrator end-to-end on the demo mock (plan → steps → review)", async () => {
     const task = await createTask(h, "What courses do we offer?");
     const mock = new MockProvider(); // demo behaviour: kb.search then answer
     const events = new MemoryEventSink();
@@ -35,7 +35,7 @@ describe("executeTask", () => {
 
   it("is idempotent: a duplicate job for the same task does nothing", async () => {
     const task = await createTask(h);
-    const mock = new MockProvider([{ text: "done" }]);
+    const mock = new MockProvider([{ toolCalls: [{ name: "finish", input: { intent: "test", language: "en", directAnswer: "done", steps: [] } }] }]);
     await executeTask(task.id, deps(() => ({ provider: mock, model: "mock" })));
     expect(await executeTask(task.id, deps(() => ({ provider: mock, model: "mock" })))).toBeNull();
     expect(mock.calls).toHaveLength(1);

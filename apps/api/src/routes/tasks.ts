@@ -41,6 +41,7 @@ export async function taskRoutes(app: FastifyInstance, opts: TaskRouteOptions) {
     agents: Object.values(AGENTS).map((a) => ({
       id: a!.id,
       description: a!.description,
+      limitations: a!.limitations ?? null,
       tools: a!.tools,
       maxSteps: a!.maxSteps,
       model: a!.model?.model ?? env.DEFAULT_MODEL,
@@ -122,9 +123,21 @@ export async function taskRoutes(app: FastifyInstance, opts: TaskRouteOptions) {
       .select({ id: schema.approvals.id, title: schema.approvals.title, risk: schema.approvals.risk, status: schema.approvals.status })
       .from(schema.approvals)
       .where(eq(schema.approvals.taskId, id));
+    const steps = await db
+      .select({
+        id: schema.agentSteps.id,
+        position: schema.agentSteps.position,
+        agentId: schema.agentSteps.agentId,
+        instruction: schema.agentSteps.instruction,
+        dependsOn: schema.agentSteps.dependsOn,
+        status: schema.agentSteps.status,
+      })
+      .from(schema.agentSteps)
+      .where(eq(schema.agentSteps.taskId, id))
+      .orderBy(asc(schema.agentSteps.position));
     // The system prompt is configuration, not run output: omit its body from the timeline.
     const timeline = messages.map((m) => (m.role === "system" ? { ...m, content: { text: "(system prompt)" } } : m));
-    return { task, runs, messages: timeline, approvals };
+    return { task, steps, runs, messages: timeline, approvals };
   });
 
   app.post("/api/tasks/:id/cancel", { preHandler: requireAuth("tasks:cancel") }, async (req) => {

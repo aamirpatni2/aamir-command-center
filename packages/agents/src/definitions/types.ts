@@ -4,8 +4,10 @@ import type { Effort } from "../model/types.js";
 
 export interface AgentDefinition {
   id: AgentId;
-  /** Used by the Orchestrator for routing (Milestone 4). */
+  /** Used by the Orchestrator for routing. */
   description: string;
+  /** What this agent can't do yet. Shown to the planner and injected into the agent's own prompt. */
+  limitations?: string;
   systemPrompt: string;
   model?: { provider?: string; model?: string };
   effort?: Effort;

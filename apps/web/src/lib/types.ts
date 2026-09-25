@@ -14,6 +14,8 @@ export interface TaskListItem {
 
 export interface AgentRun {
   id: string;
+  stepId: string | null;
+  parentRunId: string | null;
   agentId: string;
   status: TaskStatus;
   modelProvider: string | null;
@@ -42,8 +44,29 @@ export interface TimelineMessage {
   createdAt: string;
 }
 
+export interface PlanStep {
+  id: string;
+  position: number;
+  agentId: string;
+  instruction: string;
+  dependsOn: number[];
+  status: TaskStatus;
+}
+
+export interface TaskPlan {
+  intent: string;
+  language: "ur" | "ur-roman" | "en";
+  directAnswer?: string;
+  steps: { agent: string; instruction: string; acceptance: string; dependsOn: number[] }[];
+}
+
 export interface TaskDetail {
-  task: TaskListItem & { input: string; result: { text?: string; mock?: boolean; approvalIds?: string[] } | null };
+  task: TaskListItem & {
+    input: string;
+    plan: TaskPlan | null;
+    result: { text?: string; mock?: boolean; approvalIds?: string[]; issues?: string[]; nextSteps?: string[] } | null;
+  };
+  steps: PlanStep[];
   runs: AgentRun[];
   messages: TimelineMessage[];
   approvals: { id: string; title: string; risk: string; status: string }[];

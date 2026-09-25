@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Link, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bot, FlaskConical, User, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bot, FlaskConical, User, Wrench } from "lucide-react";
 import { Button, Card, StatusBadge } from "@acc/ui";
 import { api } from "../lib/api.js";
 import { useAuth } from "../lib/auth.js";
@@ -21,6 +21,41 @@ function useTaskEvents(id: string, active: boolean) {
     es.onerror = () => es.close(); // falls back to polling below
     return () => es.close();
   }, [id, active, qc]);
+}
+
+const LANGUAGE: Record<string, string> = { ur: "Urdu", "ur-roman": "Roman Urdu", en: "English" };
+
+function PlanView({ detail }: { detail: TaskDetail }) {
+  const plan = detail.task.plan;
+  if (!plan) return null;
+  return (
+    <Card title="Plan" action={<span className="text-xs text-ink-3">Output: {LANGUAGE[plan.language] ?? plan.language}</span>}>
+      <p className="mb-3 text-sm text-ink-2">{plan.intent}</p>
+      {plan.steps.length === 0 ? (
+        <p className="text-sm text-ink-3">Answered directly. No specialist was needed.</p>
+      ) : (
+        <ol className="space-y-3">
+          {plan.steps.map((s, i) => {
+            const row = detail.steps.find((r) => r.position === i + 1);
+            return (
+              <li key={i} className="flex gap-3">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-2 text-xs font-medium text-ink-2">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium text-ink capitalize">{s.agent} agent</span>
+                    {row && <StatusBadge status={row.status} />}
+                    {s.dependsOn.length > 0 && <span className="text-xs text-ink-3">uses step {s.dependsOn.join(", ")}</span>}
+                  </div>
+                  <p className="mt-0.5 text-sm text-ink-2">{s.instruction}</p>
+                  <p className="mt-0.5 text-xs text-ink-3">Done when: {s.acceptance}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </Card>
+  );
 }
 
 function Step({ m }: { m: TimelineMessage }) {
@@ -113,6 +148,20 @@ export function TaskDetailPage() {
           {task.status === "COMPLETED" || task.status === "WAITING_APPROVAL" ? (
             <Card title="Result">
               <p className="text-sm whitespace-pre-wrap text-ink">{task.result?.text || "(no text)"}</p>
+              {!!task.result?.issues?.length && (
+                <div className="mt-4 rounded-lg border border-status-warning/30 bg-status-warning/5 p-3">
+                  <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-status-warning">
+                    <AlertTriangle className="size-3.5" aria-hidden /> Issues found in review
+                  </p>
+                  <ul className="list-disc space-y-0.5 pl-5 text-sm text-ink-2">{task.result.issues.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                </div>
+              )}
+              {!!task.result?.nextSteps?.length && (
+                <div className="mt-3">
+                  <p className="mb-1 text-xs font-medium text-ink-3">Next steps</p>
+                  <ul className="list-disc space-y-0.5 pl-5 text-sm text-ink-2">{task.result.nextSteps.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                </div>
+              )}
             </Card>
           ) : task.error ? (
             <Card title="Error">
@@ -126,9 +175,26 @@ export function TaskDetailPage() {
             </p>
           )}
 
+          <PlanView detail={q.data} />
+
           <Card title="Timeline">
             {messages.length ? (
-              <ol>{messages.map((m) => <Step key={`${m.runId}-${m.seq}`} m={m} />)}</ol>
+              <div className="space-y-4">
+                {runs.map((r) => {
+                  const own = messages.filter((m) => m.runId === r.id);
+                  if (!own.length) return null;
+                  const step = q.data.steps.find((s) => s.id === r.stepId);
+                  const label = step ? `Step ${step.position} · ${r.agentId} agent` : r.parentRunId ? "Review · orchestrator" : "Planning · orchestrator";
+                  return (
+                    <section key={r.id}>
+                      <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-ink-3 uppercase">
+                        {label} <StatusBadge status={r.status} />
+                      </h3>
+                      <ol>{own.map((m) => <Step key={`${m.runId}-${m.seq}`} m={m} />)}</ol>
+                    </section>
+                  );
+                })}
+              </div>
             ) : (
               <p className="text-sm text-ink-3">{task.status === "QUEUED" ? "Waiting for the worker to pick this up…" : "No steps recorded."}</p>
             )}
@@ -152,18 +218,31 @@ export function TaskDetailPage() {
               <p className="mt-3 text-xs text-ink-3">Approve or reject these in the Approval Center (Milestone 9).</p>
             </Card>
           )}
-          {runs.map((r) => (
-            <Card key={r.id} title={<span className="capitalize">{r.agentId} agent run</span>} action={<StatusBadge status={r.status} />}>
-              <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
-                <dt className="text-ink-3">Model</dt><dd className="text-ink">{r.model ?? "—"}</dd>
-                <dt className="text-ink-3">Duration</dt><dd className="tabular text-ink">{formatDuration(r.latencyMs)}</dd>
-                <dt className="text-ink-3">Tool calls</dt><dd className="tabular text-ink">{r.toolCallCount}</dd>
-                <dt className="text-ink-3">Tokens in/out</dt><dd className="tabular text-ink">{r.inputTokens ?? 0} / {r.outputTokens ?? 0}</dd>
-                <dt className="text-ink-3">Est. cost</dt><dd className="tabular text-ink">{formatUsd(r.costMicroUsd)}</dd>
+          {runs.length > 0 && (
+            <Card title={`Agent runs (${runs.length})`}>
+              <dl className="mb-3 grid grid-cols-2 gap-y-1.5 text-sm">
+                <dt className="text-ink-3">Model</dt><dd className="text-ink">{[...new Set(runs.map((r) => r.model ?? "—"))].join(", ")}</dd>
+                <dt className="text-ink-3">Total time</dt><dd className="tabular text-ink">{formatDuration(runs.reduce((a, r) => a + (r.latencyMs ?? 0), 0))}</dd>
+                <dt className="text-ink-3">Tokens in/out</dt>
+                <dd className="tabular text-ink">{runs.reduce((a, r) => a + (r.inputTokens ?? 0), 0)} / {runs.reduce((a, r) => a + (r.outputTokens ?? 0), 0)}</dd>
+                <dt className="text-ink-3">Est. cost</dt><dd className="tabular text-ink">{formatUsd(runs.reduce((a, r) => a + (r.costMicroUsd ?? 0), 0))}</dd>
               </dl>
-              {r.errorMessage && <p className="mt-2 text-xs text-status-critical">{r.errorCode}: {r.errorMessage}</p>}
+              <ul className="divide-y divide-line text-sm">
+                {runs.map((r) => (
+                  <li key={r.id} className="py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-ink capitalize">{r.agentId}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="tabular text-xs text-ink-3">{formatDuration(r.latencyMs)} · {r.toolCallCount} tools</span>
+                        <StatusBadge status={r.status} />
+                      </span>
+                    </div>
+                    {r.errorMessage && <p className="mt-1 text-xs text-status-critical">{r.errorCode}: {r.errorMessage}</p>}
+                  </li>
+                ))}
+              </ul>
             </Card>
-          ))}
+          )}
         </div>
       </div>
     </>
