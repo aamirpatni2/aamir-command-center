@@ -21,7 +21,8 @@
     "e2e": "playwright test",
     "dev:worker": "pnpm --filter @acc/worker dev",
     "eval:routing": "pnpm --filter @acc/agents eval:routing",
-    "whatsapp:simulate": "pnpm --filter @acc/api whatsapp:simulate"
+    "whatsapp:simulate": "pnpm --filter @acc/api whatsapp:simulate",
+    "lint": "pnpm typecheck"
   },
   "devDependencies": {
     "@playwright/test": "~1.56.1",

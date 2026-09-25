@@ -4,6 +4,7 @@ Multi-agent AI business OS for Aamir Patni (AI educator, Pakistan). TypeScript p
 Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTATION_PLAN.md`.
 
 ## Commands
+- Cloud sessions: `.claude/hooks/session-start.sh` runs automatically (deps, Postgres+pgvector, Redis, dev `.env`, migrations).
 - `pnpm install` · `pnpm typecheck` · `pnpm test` (needs Postgres; test DB `acc_test`)
 - `pnpm db:generate` (after schema edits) · `pnpm db:migrate` · `pnpm db:create-owner`
 - `pnpm dev:api` → http://localhost:4000 · `pnpm dev:worker` (agent tasks) · `pnpm dev:web` → http://localhost:5173 · local services: `docker compose up -d`
