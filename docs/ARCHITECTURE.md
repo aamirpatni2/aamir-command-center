@@ -1,6 +1,6 @@
 # Architecture — Aamir AI Command Center
 
-Version 1.0 · Status: Milestone 8 implemented
+Version 1.0 · Status: Milestone 9 implemented
 
 ## 1. What this system is
 
@@ -95,7 +95,7 @@ working on this repository. They are deliberately separate.
 4. Agents call tools through the `ToolRegistry`. The registry checks the agent's permission and the tool's risk level:
    - `read` / `draft` tools run straight away.
    - `external` / `destructive` / `financial` tools **do not run**. They create an `approvals` row and the task moves to `WAITING_APPROVAL`.
-5. The operator approves, rejects or edits in the Approval Center. On approval the worker runs the stored action exactly once (idempotency key) and writes an audit log.
+5. The operator approves, rejects or edits in the Approval Center. On approval the API claims the action (`approved → executing`) and runs it exactly once through its executor, records the outcome and writes audit logs. When none of a task's approvals is open any more, the task moves from `WAITING_APPROVAL` to `COMPLETED` with the outcomes in its result.
 6. The final result is stored on the task and streamed to the UI over Server-Sent Events.
 
 ## 6. Cross-cutting concerns

@@ -1,6 +1,7 @@
 /**
  * WhatsApp Cloud API client (official Meta Graph API). Used only to execute APPROVED sends
- * (Approval Center, Milestone 9). Returns not_configured when credentials are missing.
+ * (Approval Center). Returns not_configured when credentials are missing. A thrown error means
+ * the outcome is unknown (the request may have reached Meta), so callers must not blindly retry.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 
@@ -31,6 +32,7 @@ export class WhatsAppClient {
     const res = await this.fetchImpl(`https://graph.facebook.com/${this.cfg.graphVersion}/${this.cfg.phoneNumberId}/messages`, {
       method: "POST",
       headers: { authorization: `Bearer ${this.cfg.accessToken}`, "content-type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: to.replace(/^\+/, ""), type: "text", text: { preview_url: false, body } }),
     });
     const data = (await res.json().catch(() => ({}))) as { messages?: { id: string }[]; error?: { code?: number; message?: string } };

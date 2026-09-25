@@ -124,6 +124,7 @@ export const studentMessage: Tool<z.infer<typeof studentMessageInput>, unknown> 
   input: studentMessageInput,
   describe: (i) => `Message student (${i.purpose}): "${i.text.length > 80 ? `${i.text.slice(0, 80)}…` : i.text}"`,
   supersedeKey: (i) => ({ field: "studentId", value: i.studentId }),
+  editableFields: ["text"],
   async run() {
     throw new Error("student.message executes only through the Approval Center");
   },

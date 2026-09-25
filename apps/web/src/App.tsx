@@ -23,6 +23,7 @@ import { ContentDetailPage } from "./pages/ContentDetailPage.js";
 import { CalendarPage } from "./pages/CalendarPage.js";
 import { KnowledgePage } from "./pages/KnowledgePage.js";
 import { ResearchPage } from "./pages/ResearchPage.js";
+import { ApprovalsPage } from "./pages/ApprovalsPage.js";
 import { ALL_NAV_ITEMS } from "./nav.js";
 import type { Permission } from "@acc/shared";
 
@@ -61,6 +62,7 @@ const READY: Record<string, ReactNode> = {
   "/calendar": <CalendarPage />,
   "/knowledge": <KnowledgePage />,
   "/research": <ResearchPage />,
+  "/approvals": <ApprovalsPage />,
 };
 
 export function App() {

@@ -168,7 +168,8 @@ export const whatsappSend: Tool<z.infer<typeof whatsappSendInput>, unknown> = {
   input: whatsappSendInput,
   describe: (i) => `Send WhatsApp reply: "${i.text.length > 90 ? `${i.text.slice(0, 90)}…` : i.text}"`,
   supersedeKey: (i) => ({ field: "conversationId", value: i.conversationId }),
-  // Never called by the agent runner (external → approval). Execution of approved sends is Milestone 9.
+  editableFields: ["text"],
+  // Never called by the agent runner (external → approval). Approved sends run in approvals/execute.ts.
   async run() {
     throw new Error("whatsapp.send executes only through the Approval Center");
   },

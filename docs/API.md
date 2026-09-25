@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–8)
+## Implemented (Milestones 1–9)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -72,12 +72,17 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | GET | `/api/memory` · POST `/api/memory/:id/decide` | read / `knowledge:approve` | proposed long-term memory → approved/rejected |
 | GET | `/api/research`, `/api/research/:id` | `knowledge:read` | research reports with claim status counts / claims + sources |
 | GET | `/api/dashboard/summary` | `analytics:read` | live counts (open tasks, new leads today, follow-ups due, active students, active agents, runs today, pending approvals), verified PKR revenue this month, 5 recent runs / pending approvals / open tasks. "Today" and "this month" use Asia/Karachi. |
+| GET | `/api/approvals` | `approvals:read` | `?status=open\|decided\|all\|<status>`; each item has effective payload, original payload, `edited`, `editableFields`, context (contact, course, last customer message, 24h window), execution result, `canDecide` for the caller; `counts`. Expires stale requests first. |
+| GET | `/api/approvals/:id` | `approvals:read` | same shape |
+| PATCH | `/api/approvals/:id` | `approvals:decide` (+`approvals:decide_financial` for financial) | `{edits}` pending only; only the tool's `editableFields` (e.g. `text`), never target ids → 400 `INVALID_EDIT` |
+| POST | `/api/approvals/:id/approve` | same | `{note?, edits?}` → approve + execute once → `{approval, outcome}`; outcome `executed` / `not_executed` (+code: `NOT_CONFIGURED`, `OUTSIDE_WINDOW`, `PRECONDITION`, `PROVIDER_REJECTED`, `NO_EXECUTOR`; nothing happened, retryable) / `unknown` (→ `failed`, never retried). 409 `ALREADY_DECIDED` / `EXPIRED` |
+| POST | `/api/approvals/:id/execute` | same | retry an approved, not-executed action; 409 `NOT_EXECUTABLE` otherwise |
+| POST | `/api/approvals/:id/reject` | same | `{note?}` rejects a pending request or cancels an approved, not-executed one |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/approvals` | 9 |
 | `/api/automations` | 10 |
 | `/api/mcp` | 11 |
 | `/api/analytics` | 12 |

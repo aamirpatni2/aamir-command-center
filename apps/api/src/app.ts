@@ -19,8 +19,9 @@ import { educationRoutes } from "./routes/education.js";
 import { contentRoutes } from "./routes/content.js";
 import { knowledgeRoutes } from "./routes/knowledge.js";
 import { whatsappWebhookRoutes } from "./routes/webhooks.js";
+import { approvalRoutes } from "./routes/approvals.js";
 import { TaskEventHub } from "./lib/task-events.js";
-import { createTaskQueue, type TaskQueue } from "@acc/agents";
+import { createTaskQueue, WhatsAppClient, type TaskQueue } from "@acc/agents";
 
 export interface BuildAppOptions {
   env: Env;
@@ -34,6 +35,8 @@ export interface BuildAppOptions {
   logger?: boolean;
   /** Defaults to the BullMQ queue on REDIS_URL. Tests inject an in-memory queue. */
   taskQueue?: TaskQueue;
+  /** Defaults to the real Cloud API client from env. Tests inject one with a fake fetch. */
+  whatsapp?: WhatsAppClient;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -117,6 +120,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(contentRoutes, { db });
   await app.register(knowledgeRoutes, { db, env });
   await app.register(whatsappWebhookRoutes, { db, env, queue });
+  const whatsapp =
+    opts.whatsapp ??
+    new WhatsAppClient({ accessToken: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID, graphVersion: env.WHATSAPP_GRAPH_VERSION });
+  await app.register(approvalRoutes, { db, whatsapp, events: hub });
 
   return app;
 }

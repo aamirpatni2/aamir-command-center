@@ -155,6 +155,7 @@ export const approvals = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     executedAt: timestamp("executed_at", { withTimezone: true }),
     executionResult: jsonb("execution_result").$type<Record<string, unknown>>(),
+    executionAttempts: integer("execution_attempts").notNull().default(0),
     ...timestamps,
   },
   (t) => [

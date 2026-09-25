@@ -140,3 +140,26 @@ export async function courseCatalog(db: DbOrTx, opts: { includeDraft?: boolean }
       }),
   }));
 }
+
+export type IssueCertificateResult =
+  | { status: "issued"; enrollment: typeof enrollments.$inferSelect }
+  | { status: "already_issued" }
+  | { status: "not_found" }
+  | { status: "not_eligible"; failing: CertificateCheck["checks"] };
+
+/**
+ * Issues a certificate when every rule passes. Shared by the manual route and approved
+ * `certificate.request` actions, so both apply exactly the same rules.
+ */
+export async function issueCertificate(db: DbOrTx, enrollmentId: string, certificateUrl?: string | null): Promise<IssueCertificateResult> {
+  const progress = (await enrollmentProgress(db, [enrollmentId])).get(enrollmentId);
+  if (!progress) return { status: "not_found" };
+  if (progress.certificateStatus === "issued") return { status: "already_issued" };
+  if (!progress.certificate.eligible) return { status: "not_eligible", failing: progress.certificate.checks.filter((c) => !c.ok) };
+  const [enrollment] = await db
+    .update(enrollments)
+    .set({ certificateStatus: "issued", certificateUrl: certificateUrl ?? null, status: "completed" })
+    .where(and(eq(enrollments.id, enrollmentId), sql`${enrollments.certificateStatus} <> 'issued'`))
+    .returning();
+  return enrollment ? { status: "issued", enrollment } : { status: "already_issued" };
+}

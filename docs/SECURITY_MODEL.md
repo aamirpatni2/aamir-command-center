@@ -34,6 +34,16 @@
 - Customer text is data: tools label it as such, the WhatsApp Agent prompt says so, and it can't change agent permissions (tested with an injection string).
 - Sending: every reply is an approval; the 24-hour customer-service window is surfaced (`canReplyFreeForm`) so the agent doesn't draft free-form replies that WhatsApp would reject.
 
+## 2b. Approval Center (as built, M9)
+- Deciding needs `approvals:decide` (owner/admin); `financial` risk needs `approvals:decide_financial` (owner only). Operators and viewers can read only. Checked in the API on every decision, edit and retry.
+- Exactly once: approve = `UPDATE … WHERE status='pending'`; execution claim = `UPDATE … SET status='executing' WHERE status='approved'`. Concurrent clicks: one wins, the rest get 409 (tested with 6 parallel requests).
+- Edits: only the tool's `editableFields` (message `text`), validated with the tool's own schema; the recipient/target can't be changed. The agent's original payload is kept next to the edited one.
+- Preconditions are checked at execution time (24h WhatsApp window, contact phone, certificate rules), not only when the agent asked.
+- Outcomes: *not executed* (nothing left the system: not configured, outside window, 4xx from Meta) can be retried; *unknown* (network error, timeout, 5xx) becomes `failed` and is never retried automatically, because a retry could send twice.
+- Nothing is faked: tools without an executor are recorded as `NO_EXECUTOR`; missing WhatsApp credentials are reported as `NOT_CONFIGURED` with the variable names.
+- Audit: `approval.requested / superseded / edit / approve / executed / not_executed / execution_failed / reject / expired`, plus `task.completed` when a waiting task settles. Message text is not copied into audit metadata.
+- Cancelling a task expires its pending requests. Pending requests expire after 7 days.
+
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.

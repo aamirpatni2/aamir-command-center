@@ -109,5 +109,17 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-031 — Direct web search adapters instead of MCP servers for now
 - **Why**: Two small, tested HTTP adapters behind one interface are simpler and safer than running extra MCP server processes. They fit the ToolRegistry the same way an MCP-backed tool will (M11).
 
+## ADR-032 — Approval execution: exactly once, and "unknown" is never retried
+- **Decision**: approvals move through conditional UPDATEs (`pending → approved → executing → executed`). Outcomes where nothing left the system (not configured, outside the WhatsApp window, a 4xx from Meta) go back to `approved` and can be retried. Outcomes that may have reached the provider (network error, timeout, 5xx) become `failed` and are never retried automatically.
+- **Why**: the WhatsApp Cloud API has no idempotency key, so the only safe guarantee is "at most once". A duplicate message to a customer is worse than asking Aamir to check the chat.
+
+## ADR-033 — Approved actions run in the API request, not the worker
+- **Alternatives**: queue an execution job for the worker.
+- **Why**: each action is a single HTTP call or DB update, and the person who pressed Approve gets the real outcome immediately ("sent" or exactly why not). The executors live in `packages/agents`, so moving them to the worker later (e.g. for bulk sends in M10) needs no rewrite.
+
+## ADR-034 — A task waiting for approval completes when its approvals settle
+- **Alternatives**: re-run the agent with the decision so it can continue.
+- **Why**: re-running costs tokens and could draft new messages without a new request. Recording each approval's outcome on the task keeps the history honest; follow-up work is started deliberately (by Aamir or an automation).
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

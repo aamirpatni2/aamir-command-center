@@ -73,6 +73,11 @@ Specialists today: all eight exist with prompts in `agents/<id>/prompt.md` + `ag
 
 Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, real model). CI tests check the guard-rails (schema, dependencies, failure handling) with scripted mocks.
 
+### As built (Milestone 9): Approval Center
+- `approvals/executors.ts`: one executor per approval-gated tool. It re-validates the stored payload with the tool's schema, checks preconditions at execution time and returns `executed` / `not_executed` (nothing happened; retryable) / `unknown` (may have happened; never retried).
+- `approvals/service.ts`: approve, edit, reject/cancel, execute (retry), expiry, and `settleTask`, which resumes a `WAITING_APPROVAL` task by completing it with `approvalOutcomes` once none of its approvals is open. Agents are not re-run after a decision; follow-ups are new tasks (automations, M10).
+- Tools declare `editableFields` (e.g. `["text"]`), so a person can reword a reply but never change who receives it.
+
 ## 2. Orchestrator
 
 The Orchestrator is an agent whose only tools are **delegation tools**:

@@ -33,6 +33,7 @@ export async function setupTestApp(
     loginIp: { max: 1_000, timeWindow: "1 minute" },
   },
   envOverrides: Record<string, string> = {},
+  extra: Pick<Parameters<typeof buildApp>[0], "whatsapp"> = {},
 ): Promise<TestContext> {
   const url = await resetTestDatabase();
   const env = envSchema.parse({
@@ -45,7 +46,7 @@ export async function setupTestApp(
   });
   const queue = new MemoryQueue();
   const handle = createDb(url, { max: 5 });
-  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue });
+  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue, ...extra });
   await app.ready();
   return { app, handle, queue };
 }

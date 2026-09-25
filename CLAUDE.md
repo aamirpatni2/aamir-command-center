@@ -29,6 +29,7 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 ## Agents
 Runtime in `packages/agents` (model providers, ToolRegistry, AgentRunner, executeTask). Prompts in `agents/<id>/prompt.md`.
 New tool = `Tool` with a Zod input + risk level, registered in `createDefaultToolRegistry()`, granted per agent by name.
+Approval-gated tools (`external/destructive/financial`) also need an executor in `packages/agents/src/approvals/executors.ts` (else approvals end as `NO_EXECUTOR`) and `editableFields` if a person may reword them. Never retry an execution whose outcome is unknown.
 Content formats + checks in `packages/shared/src/content.ts` (+ `skills/content/FORMATS.md`); saving in `packages/database/src/content.ts`.
 Education logic in `packages/database/src/education.ts`; fee/certificate rules in `packages/shared/src/education.ts` (+ `skills/student/POLICIES.md`).
 CRM logic in `packages/database/src/crm.ts`; scoring rules in `packages/shared/src/lead-scoring.ts` (+ `skills/sales/SCORING.md`).

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
-  and, asc, courseCatalog, desc, enrollmentProgress, eq, inArray, InvalidPhoneError, isNull,
+  and, asc, courseCatalog, desc, enrollmentProgress, eq, inArray, InvalidPhoneError, isNull, issueCertificate,
   notInArray, schema, sql, upsertContactByPhone, writeAudit, type Database,
 } from "@acc/database";
 import { CERTIFICATE_RULES, CERTIFICATE_RULES_VERSION, CONTENT_LANGUAGES } from "@acc/shared";
@@ -409,17 +409,11 @@ export async function educationRoutes(app: FastifyInstance, opts: { db: Database
   app.post("/api/enrollments/:id/certificate", { preHandler: requireAuth("certificates:issue") }, async (req) => {
     const { id } = parse(idParam, req.params);
     const body = parse(z.object({ certificateUrl: z.string().url().max(500).optional() }), req.body ?? {});
-    const progress = (await enrollmentProgress(db, [id])).get(id);
-    if (!progress) throw notFound("Enrollment");
-    if (progress.certificateStatus === "issued") throw conflict("Certificate already issued");
-    if (!progress.certificate.eligible) {
-      throw new HttpError(409, "NOT_ELIGIBLE", "Not eligible for a certificate yet", progress.certificate.checks.filter((c) => !c.ok));
-    }
-    const [enrollment] = await db
-      .update(schema.enrollments)
-      .set({ certificateStatus: "issued", certificateUrl: body.certificateUrl ?? null, status: "completed" })
-      .where(eq(schema.enrollments.id, id))
-      .returning();
+    const result = await issueCertificate(db, id, body.certificateUrl);
+    if (result.status === "not_found") throw notFound("Enrollment");
+    if (result.status === "already_issued") throw conflict("Certificate already issued");
+    if (result.status === "not_eligible") throw new HttpError(409, "NOT_ELIGIBLE", "Not eligible for a certificate yet", result.failing);
+    const enrollment = result.enrollment;
     await audit(req, "certificate.issue", "enrollment", id, { rules: CERTIFICATE_RULES_VERSION });
     return { enrollment };
   });

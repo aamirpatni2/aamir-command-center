@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { AGENTS, modelAvailability, type TaskQueue } from "@acc/agents";
+import { AGENTS, expireTaskApprovals, modelAvailability, type TaskQueue } from "@acc/agents";
 import type { Env } from "@acc/config";
 import { and, asc, desc, eq, inArray, schema, sql, writeAudit, type Database } from "@acc/database";
 import { AGENT_IDS, TASK_STATUSES } from "@acc/shared";
@@ -153,6 +153,7 @@ export async function taskRoutes(app: FastifyInstance, opts: TaskRouteOptions) {
       throw new HttpError(409, "CONFLICT", `Task is already ${exists.status}`);
     }
     await writeAudit(db, { ...auditMeta(req), action: "task.cancel", entityType: "agent_task", entityId: id });
+    await expireTaskApprovals({ db }, id, "Task cancelled");
     await hub.publish({ type: "task.status", taskId: id, status: "CANCELLED" }).catch(() => {});
     return { task };
   });

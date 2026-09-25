@@ -13,8 +13,8 @@ Each milestone runs: implement → test → inspect errors → fix → re-test �
 | 6 | Student Agent + Courses | courses/batches/students/enrollments/classes/assignments/payments API + UI | enrollment + certificate rules tests | ✅ done |
 | 7 | Content Agent | content items, Urdu/English generation, calendar view, Reels/scripts/prompts | output schema tests, language rules | ✅ done |
 | 8 | Research Agent | web research MCP, source-backed findings, verification pass, KB ingestion + embeddings | unverified-claim test | ✅ done (live web + semantic search pending keys) |
-| 9 | Approval Center | pending/approve/reject/edit UI, idempotent execution, audit | approval + unauthorized-approval tests | ⏭ next |
-| 10 | Automation Engine | trigger → condition → agent → tool → approval → action → log; cron rules (morning research) | workflow tests | |
+| 9 | Approval Center | pending/approve/reject/edit UI, idempotent execution, audit | approval + unauthorized-approval tests | ✅ done (live sending pending WhatsApp credentials) |
+| 10 | Automation Engine | trigger → condition → agent → tool → approval → action → log; cron rules (morning research) | workflow tests | ⏭ next |
 | 11 | MCP integrations | McpClientManager, WhatsApp send, Google, Canva, filesystem | failed MCP server test | |
 | 12 | Analytics | read-only views, dashboards, daily/weekly reports, agent performance | numbers match fixtures | |
 | 13 | Security hardening | encryption of stored tokens, audit immutability role, dependency audit, headers review, pen-test checklist | security test suite | |
@@ -26,6 +26,7 @@ Each milestone runs: implement → test → inspect errors → fix → re-test �
 - **M2**: react, react-dom, react-router, vite, @vitejs/plugin-react, tailwindcss, @tanstack/react-query, lucide-react.
 - **M3**: @anthropic-ai/sdk, bullmq, ioredis.
 - **M8**: embedding provider (decision at M8), @modelcontextprotocol/sdk.
+- **M9 (as built)**: approval state machine with exactly-once execution (conditional updates, `executing` claim), executors for `whatsapp.send`, `student.message` (24h window enforced at send time) and `certificate.request` (same rules as the manual route); edit (text only), reject/cancel, retry for not-executed actions, unknown outcomes never auto-retried; waiting tasks complete when their approvals settle; task cancel expires its requests; Approval Center page + approve/reject inline in Conversations. Execution runs in the API request (one HTTP call, immediate feedback) rather than the worker.
 - **M8 (as built)**: Brave/Tavily web search + SSRF-safe fetch; research integrity enforced in code (verified only with sources retrieved in-run); knowledge approval → chunking → hybrid search (Postgres FTS always, Voyage embeddings when configured); proposed-memory approval; SessionStart hook for cloud sessions. Fixed a correlated sub-query bug (catalogue seats, knowledge counts).
 - **M7 (as built)**: 9 validated content formats, automatic checks (language, AI-isms, Hindi words, income/guarantee/scarcity claims, unsourced stats), review workflow and calendar; publishing is recorded manually until integrations (M11). E2E suite now signs in once (login rate limits apply to tests too).
 - **M6 (as built)**: certificate + fee rules are a STARTER set (`skills/student/POLICIES.md`); `course.catalog` is the only source agents use for prices/dates; payment verification is human-only (owner/admin).

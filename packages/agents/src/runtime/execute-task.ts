@@ -5,6 +5,7 @@ import { orchestrate, type OrchestrationResult } from "../orchestration/orchestr
 import type { ResolvedModel } from "../model/registry.js";
 import type { ToolRegistry } from "../tools/registry.js";
 import type { TaskEventSink } from "./events.js";
+import { settleTask } from "../approvals/service.js";
 
 export interface ExecuteTaskDeps {
   db: Database;
@@ -43,6 +44,8 @@ export async function executeTask(taskId: string, deps: ExecuteTaskDeps): Promis
       .where(eq(schema.agentTasks.id, taskId));
     await writeAudit(db, { actorType: "system", action: `task.${final.toLowerCase()}`, entityType: "agent_task", entityId: taskId });
     await events.publish({ type: "task.status", taskId, status: final, error: fields.error ?? null });
+    // Approvals can be decided while the task is still running; if none is left open, complete now.
+    if (final === "WAITING_APPROVAL" && (await settleTask({ db, events }, taskId))) return "COMPLETED";
     return final;
   };
 

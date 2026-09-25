@@ -24,6 +24,8 @@ export interface Tool<I = unknown, O = unknown> {
    * (e.g. only the latest reply draft per conversation stays pending).
    */
   supersedeKey?: (input: I) => { field: string; value: string };
+  /** For approval-gated tools: payload fields a person may edit before approving (never the target ids). */
+  editableFields?: readonly string[];
   run(input: I, ctx: ToolContext): Promise<O>;
   timeoutMs?: number;
 }

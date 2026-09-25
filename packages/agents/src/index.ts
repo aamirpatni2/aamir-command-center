@@ -57,3 +57,5 @@ export * from "./integrations/whatsapp/client.js";
 export { createTaskQueue, RedisEventSink, TASK_QUEUE, TRIAGE_JOB, Redis, type TaskQueue } from "./runtime/queue.js";
 export { createWhatsappTriageTask } from "./runtime/triage.js";
 export { isPresetPlan, type PresetPlan } from "./orchestration/orchestrate.js";
+export * from "./approvals/executors.js";
+export * from "./approvals/service.js";

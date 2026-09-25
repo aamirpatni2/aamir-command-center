@@ -1,16 +1,27 @@
 import { Link, useNavigate, useParams } from "react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, MessagesSquare, PauseCircle } from "lucide-react";
 import { Button, Card, EmptyState, StatusBadge, cn } from "@acc/ui";
 import { api, ApiError } from "../lib/api.js";
 import { useAuth } from "../lib/auth.js";
 import { formatDateTime, timeAgo } from "../lib/format.js";
 import type { ConversationDetail, ConversationRow } from "../lib/crm-types.js";
+import type { DecisionResponse } from "../lib/approval-types.js";
 import { PageHeader } from "../components/Layout.js";
 
 function Thread({ id }: { id: string }) {
   const { can } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const decide = useMutation({
+    mutationFn: ({ approvalId, action }: { approvalId: string; action: "approve" | "reject" }) =>
+      api<DecisionResponse>(`/api/approvals/${approvalId}/${action}`, { method: "POST", body: {} }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["conversation", id] });
+      void qc.invalidateQueries({ queryKey: ["conversations"] });
+      void qc.invalidateQueries({ queryKey: ["approvals"] });
+    },
+  });
   const q = useQuery({
     queryKey: ["conversation", id],
     queryFn: ({ signal }) => api<ConversationDetail>(`/api/conversations/${id}`, { signal }),
@@ -59,12 +70,24 @@ function Thread({ id }: { id: string }) {
             <div className="max-w-[80%] rounded-2xl rounded-br-sm border border-dashed border-status-warning/50 bg-status-warning/5 px-3 py-2 text-sm">
               <p className="mb-1 flex items-center gap-1 text-[11px] font-medium text-status-warning"><PauseCircle className="size-3.5" aria-hidden /> Draft · waiting for your approval</p>
               <p className="whitespace-pre-wrap text-ink">{d.text}</p>
-              {d.taskId && <Link to={`/tasks/${d.taskId}`} className="mt-1 block text-right text-[11px] text-accent hover:underline">see agent reasoning</Link>}
+              <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+                {d.taskId && <Link to={`/tasks/${d.taskId}`} className="text-[11px] text-accent hover:underline">see agent reasoning</Link>}
+                <Link to="/approvals" className="text-[11px] text-accent hover:underline">edit in Approval Center</Link>
+                {can("approvals:decide") && (
+                  <>
+                    <Button variant="ghost" className="px-2 py-1 text-xs text-status-critical" disabled={decide.isPending} onClick={() => decide.mutate({ approvalId: d.id, action: "reject" })}>Reject</Button>
+                    <Button className="px-2 py-1 text-xs" disabled={decide.isPending} onClick={() => decide.mutate({ approvalId: d.id, action: "approve" })}>Approve &amp; send</Button>
+                  </>
+                )}
+              </div>
             </div>
           </li>
         ))}
       </ol>
-      <p className="border-t border-line px-4 py-2 text-xs text-ink-3">Replies are drafted by the WhatsApp Agent and sent only after approval (Approval Center, Milestone 9).</p>
+      {decide.isError && <p role="alert" className="px-4 pb-2 text-sm text-status-critical">{decide.error instanceof ApiError ? decide.error.message : "Failed"}</p>}
+      {decide.data?.outcome?.status === "not_executed" && <p role="status" className="px-4 pb-2 text-sm text-status-warning">Approved, not sent: {decide.data.outcome.message}</p>}
+      {decide.data?.outcome?.status === "unknown" && <p role="alert" className="px-4 pb-2 text-sm text-status-critical">{decide.data.outcome.message}</p>}
+      <p className="border-t border-line px-4 py-2 text-xs text-ink-3">Replies are drafted by the WhatsApp Agent. Nothing sends until you press Approve &amp; send.</p>
     </div>
   );
 }
