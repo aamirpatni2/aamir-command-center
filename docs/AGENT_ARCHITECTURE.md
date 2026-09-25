@@ -46,6 +46,12 @@ interface ModelProvider {
 4. **Status**: `WAITING_APPROVAL` if any action awaits approval, `FAILED` if planning failed or no step produced a result, otherwise `COMPLETED` with issues listed.
 Persistence: `agent_tasks.plan`, one `agent_steps` row per step (status tracked), specialist and review runs link to the planner run via `parent_run_id`, and specialist runs link to their step via `step_id`.
 
+### As built (Milestone 5): Sales + WhatsApp
+- Tools (`packages/agents/src/tools/crm.ts`): `conversation.read`, `crm.lead.search`, `crm.lead.get` (read), `crm.lead.update` (write: status except won/lost, append note, next follow-up, profile fit; rescored after), `whatsapp.send` (external → approval; a newer draft for the same conversation supersedes older pending ones via `supersedeKey`).
+- Sales Agent: `kb.search`, `crm.lead.search`, `crm.lead.get`, `crm.lead.update`. WhatsApp Agent: `kb.search`, `conversation.read`, `crm.lead.update`, `whatsapp.send`.
+- Inbound WhatsApp → webhook → `ingestInboundMessage` (contact/conversation/message/lead in one transaction, idempotent on provider message id) → debounced **triage job** → pre-planned task (`preset: true, skipReview: true`) that goes straight to the WhatsApp Agent. One model loop per burst of messages, no planner or review cost.
+- Lead scoring is deterministic code (`packages/shared/src/lead-scoring.ts`), never model-generated; keyword signal detection covers English, Roman Urdu and Urdu script.
+
 Specialists today: all eight exist with prompts in `agents/<id>/prompt.md` + `agents/_shared.md`. Until their data/tools arrive (CRM M5, students M6, web M8, analytics M12) each carries a `limitations` note that the planner sees and the agent must respect. For example, the Research Agent returns every time-sensitive claim as unverified because it has no web access yet.
 
 Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, real model). CI tests check the guard-rails (schema, dependencies, failure handling) with scripted mocks.

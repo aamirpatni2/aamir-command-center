@@ -39,6 +39,20 @@ export const envSchema = z
     OPENAI_API_KEY: optionalString,
     GOOGLE_AI_API_KEY: optionalString,
 
+    WHATSAPP_ACCESS_TOKEN: optionalString,
+    WHATSAPP_PHONE_NUMBER_ID: optionalString,
+    WHATSAPP_BUSINESS_ACCOUNT_ID: optionalString,
+    WHATSAPP_APP_SECRET: optionalString,
+    WHATSAPP_VERIFY_TOKEN: optionalString,
+    WHATSAPP_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default("v21.0"),
+    /** Run the WhatsApp Agent automatically on new inbound messages (drafts only; sending needs approval). */
+    WHATSAPP_AUTO_TRIAGE: z
+      .string()
+      .optional()
+      .transform((v) => v !== "false"),
+    /** Wait this long after a message before triage, so bursts of messages are handled together. */
+    WHATSAPP_TRIAGE_DELAY_SECONDS: z.coerce.number().int().min(0).max(3600).default(45),
+
     ACC_ENABLE_MOCKS: z
       .string()
       .optional()

@@ -27,6 +27,8 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 ## Agents
 Runtime in `packages/agents` (model providers, ToolRegistry, AgentRunner, executeTask). Prompts in `agents/<id>/prompt.md`.
 New tool = `Tool` with a Zod input + risk level, registered in `createDefaultToolRegistry()`, granted per agent by name.
+CRM logic in `packages/database/src/crm.ts`; scoring rules in `packages/shared/src/lead-scoring.ts` (+ `skills/sales/SCORING.md`).
+WhatsApp: webhook `apps/api/src/routes/webhooks.ts`, client/payloads `packages/agents/src/integrations/whatsapp`; `pnpm whatsapp:simulate` for local tests.
 Orchestration (plan → delegate → review) in `packages/agents/src/orchestration`; `pnpm eval:routing` measures real-model routing (costs API credits).
 Default model `claude-opus-5` (see docs/DECISIONS.md ADR-017); tests use `MockProvider` scripts, never the network.
 

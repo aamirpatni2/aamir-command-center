@@ -26,8 +26,8 @@ export const NAV: NavSection[] = [
     title: "Today",
     items: [
       { path: "/", label: "Dashboard", icon: LayoutDashboard, milestone: 2, ready: true, permission: "analytics:read", description: "Today at a glance" },
-      { path: "/leads", label: "Leads", icon: Users, milestone: 5, permission: "leads:read", description: "Lead pipeline, scoring and follow-ups managed with the Sales Agent" },
-      { path: "/conversations", label: "Conversations", icon: MessagesSquare, milestone: 5, permission: "leads:read", description: "WhatsApp inbox with AI-drafted replies waiting for your approval" },
+      { path: "/leads", label: "Leads", icon: Users, milestone: 5, ready: true, permission: "leads:read", description: "Lead pipeline, scoring and follow-ups managed with the Sales Agent" },
+      { path: "/conversations", label: "Conversations", icon: MessagesSquare, milestone: 5, ready: true, permission: "leads:read", description: "WhatsApp inbox with AI-drafted replies waiting for your approval" },
       { path: "/insights", label: "AI Insights", icon: Sparkles, milestone: 12, permission: "analytics:read", description: "Patterns and recommendations from the Analytics Agent" },
       { path: "/ads", label: "Ads", icon: Megaphone, milestone: 12, permission: "campaigns:read", description: "Read-only Meta Ads performance and Marketing Agent analysis" },
       { path: "/analytics", label: "Analytics", icon: BarChart3, milestone: 12, permission: "analytics:read", description: "Revenue, lead, conversion, content and campaign analytics" },

@@ -27,6 +27,13 @@
 | Agent → MCP server | Per-server least-privilege token; server allow-list; tool allow-list per server |
 | Any content from outside (web pages, WhatsApp messages, MCP results) | Treated as **data, never instructions** (prompt-injection defence); cannot raise an agent's permissions |
 
+## 2a. WhatsApp webhook (as built, M5)
+- Signature: HMAC-SHA256 of the **raw** bytes (`X-Hub-Signature-256`) with `WHATSAPP_APP_SECRET`, constant-time compare; the route has its own raw-body parser (256 KB limit).
+- Replay: `webhook_events` unique on `(provider, sha256(body))`: an identical delivery is acknowledged as `duplicate` and not processed. A delivery that failed mid-processing is marked `failed` so Meta's retry can reprocess it.
+- Duplicate messages: unique `messages.provider_message_id` + `ON CONFLICT DO NOTHING`, so counters and scores never double-count.
+- Customer text is data: tools label it as such, the WhatsApp Agent prompt says so, and it can't change agent permissions (tested with an injection string).
+- Sending: every reply is an approval; the 24-hour customer-service window is surfaced (`canReplyFreeForm`) so the agent doesn't draft free-form replies that WhatsApp would reject.
+
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.

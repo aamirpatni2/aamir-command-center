@@ -77,5 +77,15 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-021 — Specialists declare their current limitations
 - **Why**: The brief forbids fake integrations. Rather than hide agents until their tools exist, each specialist states what it can't do yet (e.g. Research has no web access until M8). The planner sees this and plans around it, the agent flags it in `blockers`/`unverifiedClaims`, and the UI shows it on the Agents page. Each limitation is removed when its milestone lands.
 
+## ADR-022 — Deterministic, documented lead scoring
+- **Alternatives**: let the model score leads.
+- **Why**: Scores drive who gets called first. They must be explainable, stable and auditable. Rules live in one file with a version, every point carries its reason, and agents can only add confirmed signals (profile fit), not numbers. The v1 rules are a starter set pending Aamir's approval.
+
+## ADR-023 — WhatsApp triage as a debounced, pre-planned task
+- **Why**: Every inbound message needs a fast, cheap first look. Skipping the planner and review keeps it to one agent loop. A short delay (`WHATSAPP_TRIAGE_DELAY_SECONDS`) batches bursts of messages; if two triages still overlap, the newer reply draft supersedes the older one, so a conversation never has two pending replies. Auto-triage can be switched off with `WHATSAPP_AUTO_TRIAGE=false`.
+
+## ADR-024 — Official WhatsApp Cloud API only
+- **Why**: Unofficial WhatsApp Web automation breaks WhatsApp's terms and risks the business number being banned. The Cloud API has signed webhooks, delivery receipts and templates.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

@@ -8,7 +8,11 @@ import { buildApp } from "../app.js";
 
 export class MemoryQueue implements TaskQueue {
   readonly jobs: string[] = [];
+  readonly triage: { conversationId: string; delayMs: number }[] = [];
   fail = false;
+  async enqueueTriage(conversationId: string, delayMs: number) {
+    this.triage.push({ conversationId, delayMs });
+  }
   async enqueue(taskId: string) {
     if (this.fail) throw new Error("redis down");
     this.jobs.push(taskId);

@@ -1,4 +1,4 @@
-import { AlertOctagon, AlertTriangle, CheckCircle2, CircleDashed, Clock, Loader2, PauseCircle, XCircle } from "lucide-react";
+import { AlertOctagon, AlertTriangle, CheckCircle2, CircleDashed, Clock, Flame, Loader2, PauseCircle, Snowflake, Thermometer, XCircle } from "lucide-react";
 import type { ComponentType } from "react";
 import { cn } from "./cn.js";
 
@@ -28,6 +28,10 @@ const STATUS: Record<string, StatusDef> = {
   external: { tone: "warning", icon: AlertTriangle },
   destructive: { tone: "serious", icon: AlertOctagon },
   financial: { tone: "critical", icon: AlertOctagon },
+  hot: { tone: "serious", icon: Flame, label: "Hot" },
+  warm: { tone: "warning", icon: Thermometer, label: "Warm" },
+  cold: { tone: "neutral", icon: Snowflake, label: "Cold" },
+  pending: { tone: "warning", icon: PauseCircle, label: "Waiting approval" },
   connected: { tone: "good", icon: CheckCircle2, label: "Configured" },
   not_configured: { tone: "neutral", icon: CircleDashed, label: "Not configured" },
 };

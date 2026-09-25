@@ -4,7 +4,7 @@ A personal multi-agent **AI Business Operating System** for running an AI educat
 students and courses, content, research, marketing, analytics and automations. An Orchestrator Agent sends work
 to specialist agents, and a human approves anything that leaves the system.
 
-> Status: **Milestone 4 complete** (repository, database, auth, dashboard, agent runtime + worker, Orchestrator with 8 specialists). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+> Status: **Milestone 5 complete** (… Orchestrator with 8 specialists, Leads + scoring, WhatsApp inbox with agent-drafted replies). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Quick start (local)
 
@@ -22,6 +22,7 @@ pnpm dev:worker                 # executes agent tasks from the Redis queue
 pnpm dev:web                    # http://localhost:5173 — sign in with the owner account
 pnpm test                       # needs the acc_test database (created by docker compose)
 E2E_EMAIL=... E2E_PASSWORD=... pnpm e2e   # browser smoke test (API + web must be running)
+pnpm whatsapp:simulate --name "Ali" "Salam, fee kitni hai?"   # signed test message → real webhook (dev only)
 ```
 
 ![Dashboard](docs/screenshots/dashboard-desktop-sample-data.png)

@@ -48,7 +48,7 @@ export async function executeTask(taskId: string, deps: ExecuteTaskDeps): Promis
 
   let result: OrchestrationResult;
   try {
-    result = await orchestrate({ id: taskId, input: task.input }, deps);
+    result = await orchestrate({ id: taskId, input: task.input, plan: task.plan }, deps);
   } catch (e) {
     // Model not configured, or an unexpected error outside a run.
     return finish("FAILED", { error: (e as Error).message });

@@ -6,7 +6,7 @@ import { Redis } from "ioredis";
 import pino from "pino";
 import { loadEnv } from "@acc/config";
 import { createDb, eq, schema } from "@acc/database";
-import { createDefaultToolRegistry, executeTask, modelAvailability, RedisEventSink, resolveModel, TASK_QUEUE } from "@acc/agents";
+import { createDefaultToolRegistry, createWhatsappTriageTask, executeTask, modelAvailability, RedisEventSink, resolveModel, TASK_QUEUE, TRIAGE_JOB } from "@acc/agents";
 
 const env = loadEnv();
 const logger = pino({
@@ -24,12 +24,19 @@ const availability = modelAvailability(env);
 if (!availability.available) logger.warn({ reason: availability.reason }, "no model configured — tasks will fail until it is");
 else if (availability.mock) logger.warn("ANTHROPIC_API_KEY not set: using the MOCK model (development only)");
 
-const worker = new Worker<{ taskId: string }>(
+const worker = new Worker<{ taskId?: string; conversationId?: string }>(
   TASK_QUEUE,
   async (job) => {
-    const log = logger.child({ taskId: job.data.taskId, jobId: job.id });
+    let taskId = job.data.taskId;
+    if (job.name === TRIAGE_JOB && job.data.conversationId) {
+      const task = await createWhatsappTriageTask(handle.db, job.data.conversationId);
+      if (!task) return { status: "skipped", reason: "conversation not found" };
+      taskId = task.id;
+    }
+    if (!taskId) return { status: "skipped", reason: "no task" };
+    const log = logger.child({ taskId, jobId: job.id, job: job.name });
     log.info("task picked up");
-    const status = await executeTask(job.data.taskId, {
+    const status = await executeTask(taskId, {
       db: handle.db,
       tools,
       events,
@@ -43,7 +50,7 @@ const worker = new Worker<{ taskId: string }>(
 );
 
 worker.on("failed", async (job, err) => {
-  logger.error({ err, taskId: job?.data.taskId }, "task job crashed");
+  logger.error({ err, taskId: job?.data.taskId, job: job?.name }, "task job crashed");
   // Unexpected crash outside the runner's own error handling: never leave the task stuck in RUNNING.
   if (job?.data.taskId) {
     await handle.db

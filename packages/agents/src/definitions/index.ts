@@ -48,11 +48,12 @@ export const orchestratorReview: AgentDefinition = {
 };
 
 export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
-  sales: specialist("sales", "Lead qualification, sales conversation analysis, course recommendation, follow-up drafts, lead scoring.", {
-    limitations: "No CRM access yet (Milestone 5): works only with information in the request or earlier steps.",
+  sales: specialist("sales", "Lead qualification and pipeline: searches and reads leads and their conversations, explains scores, recommends courses, schedules follow-ups, updates lead status and notes.", {
+    tools: ["kb.search", "crm.lead.search", "crm.lead.get", "crm.lead.update"],
   }),
-  whatsapp: specialist("whatsapp", "Classifies WhatsApp conversations, identifies intent, flags hot leads, drafts replies.", {
-    limitations: "Not connected to WhatsApp yet (Milestone 5): drafts replies from conversation text provided; cannot read or send messages.",
+  whatsapp: specialist("whatsapp", "Reads WhatsApp conversations, classifies intent, flags hot leads, drafts replies (sent only after approval), updates the lead and schedules follow-ups.", {
+    tools: ["kb.search", "conversation.read", "crm.lead.update", "whatsapp.send"],
+    limitations: "Approved replies are actually sent once the Approval Center executes actions (Milestone 9) and WhatsApp credentials are configured.",
   }),
   content: specialist("content", "Content ideas, hooks, scripts, captions, social posts, Reel concepts, scene plans, AI image/video prompts, content calendars (Urdu, Roman Urdu, English).", {
     effort: "high",

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "whatsapp:simulate": "tsx scripts/simulate-whatsapp.ts"
   },
   "dependencies": {
     "@acc/agents": "workspace:*",

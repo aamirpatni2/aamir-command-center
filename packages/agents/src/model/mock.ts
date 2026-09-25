@@ -44,6 +44,25 @@ export class MockProvider implements ModelProvider {
     const finish = req.tools.find((t) => t.name === "finish");
     const props = Object.keys((finish?.inputSchema.properties as Record<string, unknown>) ?? {});
 
+    // WhatsApp triage demo: read → submit reply for approval + update lead → finish.
+    if (req.tools.some((t) => t.name === "conversation.read")) {
+      const conversationId = /conversation ([0-9a-f-]{36})/.exec(full)?.[1];
+      const results = req.messages.filter((m) => m.role === "tool_results");
+      if (conversationId && results.length === 0) {
+        return { text: "[MOCK] Reading the conversation.", toolCalls: [{ name: "conversation.read", input: { conversationId } }] };
+      }
+      if (conversationId && results.length === 1) {
+        const read = results[0]!.role === "tool_results" ? results[0]!.results[0]?.content ?? "" : "";
+        const leadId = /"lead":\{"id":"([0-9a-f-]{36})"/.exec(read)?.[1];
+        return {
+          text: "[MOCK] Drafting a reply for approval and updating the lead.",
+          toolCalls: [
+            { name: "whatsapp.send", input: { conversationId, text: "[MOCK] Walaikum salam! Shukriya message karne ka. Details confirm karke jaldi batate hain." } },
+            ...(leadId ? [{ name: "crm.lead.update", input: { leadId, status: "contacted", appendNote: "[MOCK] Triaged by the mock model." } }] : []),
+          ],
+        };
+      }
+    }
     if (!hasToolResults && req.tools.some((t) => t.name === "kb.search") && !props.includes("answer")) {
       return { text: "[MOCK] Checking approved knowledge first.", toolCalls: [{ name: "kb.search", input: { query: request.slice(0, 200) } }] };
     }

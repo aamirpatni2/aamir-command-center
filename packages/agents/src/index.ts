@@ -15,8 +15,14 @@ export * from "./runtime/events.js";
 
 import { ToolRegistry } from "./tools/registry.js";
 import { INTERNAL_TOOLS } from "./tools/internal.js";
+import { CRM_TOOLS } from "./tools/crm.js";
 /** Registry with every production tool registered. */
 export function createDefaultToolRegistry(): ToolRegistry {
-  return new ToolRegistry().register(...INTERNAL_TOOLS);
+  return new ToolRegistry().register(...INTERNAL_TOOLS, ...CRM_TOOLS);
 }
-export { createTaskQueue, RedisEventSink, TASK_QUEUE, Redis, type TaskQueue } from "./runtime/queue.js";
+export { CRM_TOOLS } from "./tools/crm.js";
+export * from "./integrations/whatsapp/payload.js";
+export * from "./integrations/whatsapp/client.js";
+export { createTaskQueue, RedisEventSink, TASK_QUEUE, TRIAGE_JOB, Redis, type TaskQueue } from "./runtime/queue.js";
+export { createWhatsappTriageTask } from "./runtime/triage.js";
+export { isPresetPlan, type PresetPlan } from "./orchestration/orchestrate.js";

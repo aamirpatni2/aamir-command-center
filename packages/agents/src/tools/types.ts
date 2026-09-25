@@ -19,6 +19,11 @@ export interface Tool<I = unknown, O = unknown> {
   input: ZodType<I>;
   /** Short human summary shown in the Approval Center for risky tools. */
   describe?: (input: I) => string;
+  /**
+   * For approval-gated tools: a newer request with the same key replaces older pending ones
+   * (e.g. only the latest reply draft per conversation stays pending).
+   */
+  supersedeKey?: (input: I) => { field: string; value: string };
   run(input: I, ctx: ToolContext): Promise<O>;
   timeoutMs?: number;
 }

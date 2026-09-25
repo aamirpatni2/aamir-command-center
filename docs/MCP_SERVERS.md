@@ -12,7 +12,7 @@ Rule: install only what a milestone actually needs. No server is active yet (Mil
 | 3 | Web / research | Brave Search MCP or Tavily MCP + fetch | planned | 8 |
 | 4 | GitHub | `github/github-mcp-server` | planned (optional) | 11 |
 | 5 | Google (Drive, Calendar, Gmail) | Google Workspace MCP | planned | 11 |
-| 6 | WhatsApp | WhatsApp Cloud API adapter (official Meta Graph API; own MCP wrapper) | planned | 5/11 |
+| 6 | WhatsApp | WhatsApp Cloud API (official Meta Graph API) — direct adapter | **receive: built** (webhook); send: client built, executes on approval in M9 | 5/9 |
 | 7 | Canva | Canva MCP (Connect API) | planned | 11 |
 | 8 | Meta Ads / analytics | Meta Marketing API MCP (read-only first) | planned | 12 |
 | 9 | Browser automation | Playwright MCP — research only, never logged into business accounts | planned (optional) | 8 |

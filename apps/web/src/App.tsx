@@ -10,6 +10,9 @@ import { ComingSoonPage } from "./pages/ComingSoonPage.js";
 import { TasksPage } from "./pages/TasksPage.js";
 import { TaskDetailPage } from "./pages/TaskDetailPage.js";
 import { AgentsPage } from "./pages/AgentsPage.js";
+import { LeadsPage } from "./pages/LeadsPage.js";
+import { LeadDetailPage } from "./pages/LeadDetailPage.js";
+import { ConversationsPage } from "./pages/ConversationsPage.js";
 import { ALL_NAV_ITEMS } from "./nav.js";
 import type { Permission } from "@acc/shared";
 
@@ -37,6 +40,8 @@ const READY: Record<string, ReactNode> = {
   "/settings": <SettingsPage />,
   "/tasks": <TasksPage />,
   "/agents": <AgentsPage />,
+  "/leads": <LeadsPage />,
+  "/conversations": <ConversationsPage />,
 };
 
 export function App() {
@@ -58,6 +63,8 @@ export function App() {
           />
         ))}
         <Route path="/tasks/:id" element={<Guard permission="tasks:read"><TaskDetailPage /></Guard>} />
+        <Route path="/leads/:id" element={<Guard permission="leads:read"><LeadDetailPage /></Guard>} />
+        <Route path="/conversations/:id" element={<Guard permission="leads:read"><ConversationsPage /></Guard>} />
         <Route path="*" element={<PageHeader title="Page not found" description="That page doesn't exist." />} />
       </Route>
     </Routes>

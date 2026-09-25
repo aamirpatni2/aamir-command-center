@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–3)
+## Implemented (Milestones 1–5)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -30,13 +30,23 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/tasks/:id/cancel` | `tasks:cancel` | open task → CANCELLED; 409 if already finished |
 | GET | `/api/tasks/:id/events` | `tasks:read` | **SSE**: `snapshot`, `task.status`, `run.started`, `run.step`, `run.finished`; ends after a terminal status; heartbeat every 25 s |
 | GET | `/api/agent-runs` | `tasks:read` | Agent Activity: agent, task, status, started, duration, tools used, tokens, cost, result/error, `mock` flag. `?agentId&status&limit` |
+| GET | `/api/leads` | `leads:read` | `?q&status&band(hot/warm/cold)&due=today&sort(score/followup/recent)&limit&offset` → `{leads, total}` |
+| POST | `/api/leads` | `leads:write` | `{phone, name?, email?, source?, notes?}`; phone normalised to E.164 (PK default). Existing open lead for that number → **200 `{duplicate: true}`** (merged, audited) instead of a new lead; new → 201 |
+| GET | `/api/leads/:id` | `leads:read` | lead (score, band, reasons, signals), contact, conversations |
+| PATCH | `/api/leads/:id` | `leads:write` | `{status?, notes?, nextFollowUpAt?, ownerUserId?, interestedCourseId?, profileFit?}`; rescored; audited. Humans may set won/lost |
+| DELETE | `/api/leads/:id` | `leads:delete` | soft delete, audited |
+| GET | `/api/leads/scoring` | `leads:read` | rules, bands, version |
+| GET | `/api/conversations` | `leads:read` | inbox: contact, last message, band, pending draft count |
+| GET | `/api/conversations/:id` | `leads:read` | messages, lead, pending reply drafts |
+| POST | `/api/conversations/:id/triage` | `tasks:create` | runs the WhatsApp Agent on this conversation now → 202 `{task}` |
+| GET | `/api/webhooks/whatsapp` | public | Meta subscription handshake (`hub.verify_token`) |
+| POST | `/api/webhooks/whatsapp` | HMAC | `X-Hub-Signature-256` over the raw body with `WHATSAPP_APP_SECRET` (401 if wrong, 503 if not configured). Identical body replayed → `{status: "duplicate"}`; duplicate message ids ignored; failed deliveries can be retried; unknown shapes acknowledged as `ignored` |
 | GET | `/api/dashboard/summary` | `analytics:read` | live counts (open tasks, new leads today, follow-ups due, active students, active agents, runs today, pending approvals), verified PKR revenue this month, 5 recent runs / pending approvals / open tasks. "Today" and "this month" use Asia/Karachi. |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/leads`, `/api/conversations`, `/api/webhooks/whatsapp` | 5 |
 | `/api/students`, `/api/courses` | 6 |
 | `/api/content` | 7 |
 | `/api/research`, `/api/knowledge` | 8 |

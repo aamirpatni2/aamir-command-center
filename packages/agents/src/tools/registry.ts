@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { schema, writeAudit } from "@acc/database";
+import { and, eq, ne, schema, sql, writeAudit } from "@acc/database";
 import { APPROVAL_REQUIRED_RISKS } from "@acc/shared";
 import type { ToolSpec } from "../model/types.js";
 import type { Tool, ToolContext, ToolOutcome } from "./types.js";
@@ -82,6 +82,24 @@ export class ToolRegistry {
         })
         .onConflictDoUpdate({ target: schema.approvals.idempotencyKey, set: { updatedAt: new Date() } })
         .returning({ id: schema.approvals.id });
+      if (tool.supersedeKey) {
+        const key = tool.supersedeKey(parsed.data);
+        const superseded = await ctx.db
+          .update(schema.approvals)
+          .set({ status: "expired", decisionNote: "Superseded by a newer draft", decidedAt: new Date() })
+          .where(
+            and(
+              eq(schema.approvals.status, "pending"),
+              eq(schema.approvals.toolName, tool.name),
+              ne(schema.approvals.id, row!.id),
+              sql`${schema.approvals.payload}->>${key.field} = ${key.value}`,
+            ),
+          )
+          .returning({ id: schema.approvals.id });
+        for (const s of superseded) {
+          await writeAudit(ctx.db, { actorType: "agent", actorId: ctx.agentId, action: "approval.superseded", entityType: "approval", entityId: s.id, metadata: { by: row!.id } });
+        }
+      }
       await writeAudit(ctx.db, {
         actorType: "agent",
         actorId: ctx.agentId,
