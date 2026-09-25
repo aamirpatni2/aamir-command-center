@@ -4,3 +4,4 @@ export * from "./auth.js";
 export * from "./phone.js";
 export * from "./lead-scoring.js";
 export * from "./education.js";
+export * from "./content.js";

@@ -21,6 +21,7 @@ export const PERMISSIONS = {
   "courses:write": ["owner", "admin"],
   "content:read": ["owner", "admin", "operator", "viewer"],
   "content:write": ["owner", "admin", "operator"],
+  "content:approve": ["owner", "admin"],
   "campaigns:read": ["owner", "admin", "operator", "viewer"],
   "campaigns:write": ["owner", "admin"],
   "tasks:read": ["owner", "admin", "operator", "viewer"],

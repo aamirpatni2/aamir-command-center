@@ -17,12 +17,14 @@ import { ToolRegistry } from "./tools/registry.js";
 import { INTERNAL_TOOLS } from "./tools/internal.js";
 import { CRM_TOOLS } from "./tools/crm.js";
 import { EDUCATION_TOOLS } from "./tools/education.js";
+import { CONTENT_TOOLS } from "./tools/content.js";
 /** Registry with every production tool registered. */
 export function createDefaultToolRegistry(): ToolRegistry {
-  return new ToolRegistry().register(...INTERNAL_TOOLS, ...CRM_TOOLS, ...EDUCATION_TOOLS);
+  return new ToolRegistry().register(...INTERNAL_TOOLS, ...CRM_TOOLS, ...EDUCATION_TOOLS, ...CONTENT_TOOLS);
 }
 export { CRM_TOOLS } from "./tools/crm.js";
 export { EDUCATION_TOOLS } from "./tools/education.js";
+export { CONTENT_TOOLS } from "./tools/content.js";
 export * from "./integrations/whatsapp/payload.js";
 export * from "./integrations/whatsapp/client.js";
 export { createTaskQueue, RedisEventSink, TASK_QUEUE, TRIAGE_JOB, Redis, type TaskQueue } from "./runtime/queue.js";

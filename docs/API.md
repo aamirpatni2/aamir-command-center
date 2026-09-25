@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–6)
+## Implemented (Milestones 1–7)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -57,13 +57,19 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/batches/:id/assignments` | `students:write` | |
 | PUT | `/api/assignments/:id/submissions/:enrollmentId` | `students:write` | upsert status/score/feedback |
 | POST | `/api/enrollments/:id/certificate` | `certificates:issue` (owner/admin) | 409 `NOT_ELIGIBLE` with failing checks; issued once; enrolment → completed |
+| GET | `/api/content` | `content:read` | `?type=a,b&status&language&q&limit` → items with preview and check count |
+| GET | `/api/content/calendar` | `content:read` | `?month=YYYY-MM` scheduled/published items in that month (Asia/Karachi) |
+| GET | `/api/content/:id` | `content:read` | item with format data, checks, sources, history |
+| POST | `/api/content` | `content:write` | `{type, data, language, platform?, title?}` validated per format → draft with checks |
+| PATCH | `/api/content/:id` | `content:write` | edit text/title/language; re-runs checks; approved/scheduled → back to review; published → 409 |
+| POST | `/api/content/:id/status` | `content:write` or `content:approve` | `{status, note?, scheduledFor?, publishedUrl?}`; transitions enforced (409 otherwise); approve/schedule/publish need `content:approve` (owner/admin); scheduling needs a future date |
+| DELETE | `/api/content/:id` | `content:write` | soft delete (not published items) |
 | GET | `/api/dashboard/summary` | `analytics:read` | live counts (open tasks, new leads today, follow-ups due, active students, active agents, runs today, pending approvals), verified PKR revenue this month, 5 recent runs / pending approvals / open tasks. "Today" and "this month" use Asia/Karachi. |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/content` | 7 |
 | `/api/research`, `/api/knowledge` | 8 |
 | `/api/approvals` | 9 |
 | `/api/automations` | 10 |

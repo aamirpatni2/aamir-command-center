@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ScrollText } from "lucide-react";
 import { Button, Card, EmptyState } from "@acc/ui";
@@ -17,13 +18,20 @@ interface AuditLog {
   metadata: Record<string, unknown>;
 }
 
+const ACTIONS = [
+  "auth.login", "auth.login_failed", "user.create", "user.update", "task.create", "approval.requested", "approval.superseded",
+  "tool.denied", "lead.create", "lead.update", "lead.duplicate_merged", "payment.verify", "certificate.issue",
+  "content.approved", "content.published",
+];
+
 export function LogsPage() {
+  const [action, setAction] = useState("");
   const q = useInfiniteQuery({
-    queryKey: ["audit-logs"],
+    queryKey: ["audit-logs", action],
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) =>
       api<{ auditLogs: AuditLog[]; nextBefore: string | null }>(
-        `/api/audit-logs?limit=50${pageParam ? `&before=${encodeURIComponent(pageParam)}` : ""}`,
+        `/api/audit-logs?limit=50${action ? `&action=${encodeURIComponent(action)}` : ""}${pageParam ? `&before=${encodeURIComponent(pageParam)}` : ""}`,
         { signal },
       ),
     getNextPageParam: (last) => last.nextBefore,
@@ -32,7 +40,24 @@ export function LogsPage() {
 
   return (
     <>
-      <PageHeader title="Logs" description="Append-only audit log: sign-ins, account changes and, later, every agent action and approval." />
+      <PageHeader
+        title="Logs"
+        description="Append-only audit log: sign-ins, account changes, agent actions, approvals, payments and content decisions."
+        action={
+          <label className="flex items-center gap-2 text-sm text-ink-2">
+            Action
+            <input
+              list="audit-actions"
+              value={action}
+              onChange={(e) => setAction(e.target.value.trim())}
+              placeholder="all"
+              aria-label="Filter by action"
+              className="w-52 rounded-md border border-line bg-bg px-2 py-1.5 text-ink placeholder:text-ink-3"
+            />
+            <datalist id="audit-actions">{ACTIONS.map((a) => <option key={a} value={a} />)}</datalist>
+          </label>
+        }
+      />
       <Card className="p-0">
         {q.isError && <p role="alert" className="p-4 text-sm text-status-critical">{(q.error as Error).message}</p>}
         {!q.isLoading && rows.length === 0 ? (

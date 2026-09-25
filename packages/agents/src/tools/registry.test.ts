@@ -68,6 +68,18 @@ describe("ToolRegistry", () => {
     expect(await registry.execute(ALL, { id: "6", name: "test.broken", input: {} }, ctx)).toMatchObject({ status: "error", code: "FAILED" });
   });
 
+  it("every production tool has a model-compatible schema (top-level object)", async () => {
+    const { createDefaultToolRegistry } = await import("../index.js");
+    const { AGENTS } = await import("../definitions/index.js");
+    const reg = createDefaultToolRegistry();
+    for (const agent of Object.values(AGENTS)) {
+      for (const spec of reg.specsFor(agent!.tools)) {
+        expect(spec.inputSchema.type, `${agent!.id} → ${spec.name}`).toBe("object");
+        expect(spec.name).toMatch(/^[a-z_]+(\.[a-z_]+)*$/);
+      }
+    }
+  });
+
   it("specs mark approval-gated tools and reject unknown grants", () => {
     const specs = registry.specsFor(["test.send"]);
     expect(specs[0]!.description).toContain("human approval");

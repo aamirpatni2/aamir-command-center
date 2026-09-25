@@ -93,5 +93,11 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-026 — Money is verified by a person
 - **Why**: JazzCash, EasyPaisa and bank transfers are confirmed by checking the account, which no API does for us yet. Payments are recorded as pending by anyone with `payments:write`; only owner/admin can verify. Only verified amounts count towards balance, revenue and certificates.
 
+## ADR-027 — Structured content formats + heuristic checks, human approval
+- **Why**: Free text can't be reliably rendered (Reel beats, script chapters, carousel slides), searched or scheduled. Each type has a strict format validated on save; the body is rendered from it. Checks catch the costly mistakes (unsourced income claims, guarantees, fake scarcity, wrong language, generic AI phrasing). They warn instead of blocking because a person makes the final call, and the agent sees the checks and can fix and re-save.
+
+## ADR-028 — Content voice from Aamir's content system, truth rules on top
+- **Why**: The content playbook's hook examples include specific income figures. The system rule "never invent stats" wins: figures are only used with a source, otherwise non-numeric framing. The INCOME_CLAIM check enforces it.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

@@ -45,10 +45,10 @@ export const NAV: NavSection[] = [
   {
     title: "Content",
     items: [
-      { path: "/content", label: "Content", icon: PenSquare, milestone: 7, permission: "content:read", description: "Hooks, scripts, captions and posts in Urdu and English" },
-      { path: "/reels", label: "Reels", icon: Film, milestone: 7, permission: "content:read", description: "Reel concepts, scene plans and scripts" },
-      { path: "/creatives", label: "Creatives", icon: Palette, milestone: 7, permission: "content:read", description: "Image/video prompts and Canva designs" },
-      { path: "/calendar", label: "Calendar", icon: Clapperboard, milestone: 7, permission: "content:read", description: "Content calendar and publishing schedule" },
+      { path: "/content", ready: true, label: "Content", icon: PenSquare, milestone: 7, permission: "content:read", description: "Hooks, scripts, captions and posts in Urdu and English" },
+      { path: "/reels", ready: true, label: "Reels", icon: Film, milestone: 7, permission: "content:read", description: "Reel concepts, scene plans and scripts" },
+      { path: "/creatives", ready: true, label: "Creatives", icon: Palette, milestone: 7, permission: "content:read", description: "Image/video prompts and Canva designs" },
+      { path: "/calendar", ready: true, label: "Calendar", icon: Clapperboard, milestone: 7, permission: "content:read", description: "Content calendar and publishing schedule" },
     ],
   },
   {

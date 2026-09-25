@@ -57,6 +57,11 @@ Persistence: `agent_tasks.plan`, one `agent_steps` row per step (status tracked)
 - Student Agent tools: `student.search`, `student.get` (attendance, assignments, verified vs pending payments, balance, certificate checks), `student.message` (external → approval, one pending per student), `certificate.request` (external → approval).
 - Progress and eligibility are computed in code (`packages/database/src/education.ts`, `packages/shared/src/education.ts`), never by the model.
 
+### As built (Milestone 7): Content
+- Content Agent tools: `kb.search`, `course.catalog`, `content.search` (avoid repeats), `content.save` (draft; one of 9 validated formats; returns automatic checks so the agent can fix flagged claims and re-save).
+- Prompt encodes Aamir's content system (voice, hook frameworks, Reel/YouTube structures, repurposing) with truth rules that override style: no invented stats, income figures or testimonials; prices and dates only from the catalogue.
+- Tool schemas are tested to be model-compatible (top-level JSON object) for every agent.
+
 Specialists today: all eight exist with prompts in `agents/<id>/prompt.md` + `agents/_shared.md`. Until their data/tools arrive (CRM M5, students M6, web M8, analytics M12) each carries a `limitations` note that the planner sees and the agent must respect. For example, the Research Agent returns every time-sensitive claim as unverified because it has no web access yet.
 
 Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, real model). CI tests check the guard-rails (schema, dependencies, failure handling) with scripted mocks.

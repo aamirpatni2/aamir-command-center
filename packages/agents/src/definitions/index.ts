@@ -55,9 +55,9 @@ export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
     tools: ["kb.search", "course.catalog", "conversation.read", "crm.lead.update", "whatsapp.send"],
     limitations: "Approved replies are actually sent once the Approval Center executes actions (Milestone 9) and WhatsApp credentials are configured.",
   }),
-  content: specialist("content", "Content ideas, hooks, scripts, captions, social posts, Reel concepts, scene plans, AI image/video prompts, content calendars (Urdu, Roman Urdu, English).", {
+  content: specialist("content", "Creates and saves content drafts: topic ideas, hooks, YouTube scripts, Facebook Reel scripts, captions, posts, carousels, AI image/video prompts and repurposing plans (Roman Urdu, Urdu, English), in Aamir's voice.", {
     effort: "high",
-    tools: ["kb.search", "course.catalog"],
+    tools: ["kb.search", "course.catalog", "content.search", "content.save"],
   }),
   research: specialist("research", "Researches AI tools, models, agentic AI, MCP and automation; verifies claims; turns findings into teaching material.", {
     effort: "high",

@@ -1,18 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-const email = process.env.E2E_EMAIL ?? "";
-const password = process.env.E2E_PASSWORD ?? "";
-test.skip(!email || !password, "set E2E_EMAIL and E2E_PASSWORD (owner account)");
+test.skip(!process.env.E2E_EMAIL, "set E2E_EMAIL and E2E_PASSWORD");
 
-test("course → batch → enrol → class attendance → payment → verify → certificate", async ({ page, isMobile }, info) => {
-  test.skip(isMobile, "desktop flow");
+test("course → batch → enrol → class attendance → payment → verify → certificate", async ({ page }, info) => {
   const stamp = Date.now().toString(36);
   const phone = `0321${String(Date.now()).slice(-7)}`; // unique student per run
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
 
   await page.goto("/courses");
   await page.getByRole("button", { name: "New course" }).click();

@@ -6,3 +6,4 @@ export * as schema from "./schema/index.js";
 export { sql, eq, ne, and, or, isNull, isNotNull, desc, asc, gt, gte, lt, lte, inArray, notInArray, count, ilike } from "drizzle-orm";
 export * from "./crm.js";
 export * from "./education.js";
+export * from "./content.js";

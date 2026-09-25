@@ -9,11 +9,13 @@ test("login → dashboard → navigation → logs → logout", async ({ page, is
   await page.goto("/");
   await expect(page).toHaveURL(/\/login$/);
 
-  await page.getByLabel("Email").fill(email);
+  // Wrong credentials on a throwaway address: same generic error, without locking the real account.
+  await page.getByLabel("Email").fill(`nobody-${Date.now()}@example.test`);
   await page.getByLabel("Password").fill("wrong-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toContainText("incorrect");
 
+  await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
@@ -27,12 +29,13 @@ test("login → dashboard → navigation → logs → logout", async ({ page, is
 
   // A roadmap page shows an honest placeholder, not fake data.
   await openNav();
-  await page.getByRole("link", { name: /^Content/ }).first().click();
-  await expect(page.getByText("Arrives in Milestone 7")).toBeVisible();
+  await page.getByRole("link", { name: /AI Research/ }).first().click();
+  await expect(page.getByText("Arrives in Milestone 8")).toBeVisible();
 
   await openNav();
   await page.getByRole("link", { name: /Logs/ }).click();
-  await expect(page.getByRole("cell", { name: "auth.login" }).first()).toBeVisible();
+  await page.getByLabel("Filter by action").fill("auth.login");
+  await expect(page.getByRole("cell", { name: "auth.login", exact: true }).first()).toBeVisible();
 
   // Reload keeps the session (cookie), then sign out returns to login.
   await page.reload();

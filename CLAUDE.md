@@ -27,6 +27,7 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 ## Agents
 Runtime in `packages/agents` (model providers, ToolRegistry, AgentRunner, executeTask). Prompts in `agents/<id>/prompt.md`.
 New tool = `Tool` with a Zod input + risk level, registered in `createDefaultToolRegistry()`, granted per agent by name.
+Content formats + checks in `packages/shared/src/content.ts` (+ `skills/content/FORMATS.md`); saving in `packages/database/src/content.ts`.
 Education logic in `packages/database/src/education.ts`; fee/certificate rules in `packages/shared/src/education.ts` (+ `skills/student/POLICIES.md`).
 CRM logic in `packages/database/src/crm.ts`; scoring rules in `packages/shared/src/lead-scoring.ts` (+ `skills/sales/SCORING.md`).
 WhatsApp: webhook `apps/api/src/routes/webhooks.ts`, client/payloads `packages/agents/src/integrations/whatsapp`; `pnpm whatsapp:simulate` for local tests.

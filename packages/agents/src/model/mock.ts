@@ -39,11 +39,36 @@ export class MockProvider implements ModelProvider {
   private demoStep(req: ModelRequest) {
     const lastUser = [...req.messages].reverse().find((m) => m.role === "user");
     const full = lastUser && lastUser.role === "user" ? lastUser.content : "";
-    const request = (full.split("Request from Aamir:").at(-1) ?? full).split("Specialist catalogue:")[0]!.trim();
+    // Planner inputs say "Request from Aamir:", specialist inputs "Original request from Aamir (context only):".
+    const request = (full.split(/request from Aamir[^:\n]*:\s*/i).at(-1) ?? full).split("Specialist catalogue:")[0]!.trim();
     const hasToolResults = req.messages.some((m) => m.role === "tool_results");
     const finish = req.tools.find((t) => t.name === "finish");
     const props = Object.keys((finish?.inputSchema.properties as Record<string, unknown>) ?? {});
 
+    // Content demo: save one clearly-labelled mock Reel draft, then finish.
+    if (req.tools.some((t) => t.name === "content.save") && props.includes("output")) {
+      const saved = req.messages.some((m) => m.role === "tool_results" && m.results.some((r) => r.content.includes('"status":"draft"')));
+      if (!saved) {
+        return {
+          text: "[MOCK] Saving a sample Reel draft.",
+          toolCalls: [{
+            name: "content.save",
+            input: {
+              type: "reel", language: "ur-roman", platform: "facebook",
+              data: {
+                title: `[MOCK] ${request.slice(0, 80)}`,
+                durationSec: 45,
+                hook: "[MOCK] Yeh ek simulated hook hai.",
+                beats: [{ start: 3, end: 30, voiceover: "[MOCK] Asli script API key lagane ke baad Claude likhega.", onScreenText: "MOCK" }],
+                cta: "Follow karo",
+                caption: "[MOCK] Sample caption",
+                hashtags: ["AIinUrdu"],
+              },
+            },
+          }],
+        };
+      }
+    }
     // WhatsApp triage demo: read → submit reply for approval + update lead → finish.
     if (req.tools.some((t) => t.name === "conversation.read")) {
       const conversationId = /conversation ([0-9a-f-]{36})/.exec(full)?.[1];

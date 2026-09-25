@@ -1,17 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-const email = process.env.E2E_EMAIL ?? "";
-const password = process.env.E2E_PASSWORD ?? "";
-test.skip(!email || !password, "set E2E_EMAIL and E2E_PASSWORD");
+test.skip(!process.env.E2E_EMAIL, "set E2E_EMAIL and E2E_PASSWORD");
 
 // Expects seeded conversations (pnpm whatsapp:simulate) and the worker running.
-test("leads and WhatsApp inbox", async ({ page, isMobile }, info) => {
-  test.skip(isMobile, "desktop layout check");
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
+test("leads and WhatsApp inbox", async ({ page }, info) => {
 
   await page.goto("/leads");
   await expect(page.getByRole("link", { name: /Ayesha Siddiqui/ })).toBeVisible();
