@@ -7,9 +7,9 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **CSRF**: every `POST/PUT/PATCH/DELETE` on an authenticated route needs the header `x-csrf-token: <csrfToken>` (from the login or `/me` response).
 - **Errors**: `{ "error": { "code": "VALIDATION_ERROR|UNAUTHORIZED|FORBIDDEN|CSRF_INVALID|NOT_FOUND|CONFLICT|RATE_LIMITED|INTERNAL", "message": "...", "details"?: [...] } }`
 - **Tracing**: every response has `x-request-id`.
-- **Rate limits**: 300 req/min per IP globally; login 5 attempts / 15 min per IP + email.
+- **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestone 1)
+## Implemented (Milestones 1–2)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -23,6 +23,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/users` | `users:manage` | `{email, name, role, password(12+)}` → 201 |
 | PATCH | `/api/users/:id` | `users:manage` | `{name?, role?, isActive?}`; can't demote or deactivate the last owner or yourself; role/active changes revoke that user's sessions |
 | GET | `/api/audit-logs` | `audit:read` | `?limit&before&action&entityType` → `{auditLogs, nextBefore}` |
+| GET | `/api/dashboard/summary` | `analytics:read` | live counts (open tasks, new leads today, follow-ups due, active students, active agents, runs today, pending approvals), verified PKR revenue this month, 5 recent runs / pending approvals / open tasks. "Today" and "this month" use Asia/Karachi. |
 
 ## Planned
 

@@ -30,7 +30,7 @@
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.
-- Login rate limit: 5 attempts / 15 min per IP + email. Generic error message (no user enumeration). Timing kept equal with a dummy hash when the user doesn't exist.
+- Login throttling: 5 **failed** attempts / 15 min per IP + email → 429 with `Retry-After` (a successful login resets the counter and never counts, so the owner can't lock themselves out by signing in often), plus a coarse cap of 30 login requests / 15 min per IP against spraying many emails. The failure counter is in-memory (one API instance); it moves to Redis when the API scales out. Generic error message (no user enumeration). Timing kept equal with a dummy hash when the user doesn't exist.
 - First owner account is created by the CLI (`pnpm db:create-owner`), never through an open sign-up endpoint. There is no public registration.
 
 ## 4. Authorization (RBAC)

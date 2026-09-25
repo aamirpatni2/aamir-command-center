@@ -12,12 +12,17 @@ import { healthRoutes } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/users.js";
 import { auditRoutes } from "./routes/audit.js";
+import { dashboardRoutes } from "./routes/dashboard.js";
 
 export interface BuildAppOptions {
   env: Env;
   db: Database;
   /** Overrides for tests. */
-  rateLimit?: { global?: { max: number; timeWindow: string }; login?: { max: number; timeWindow: string } };
+  rateLimit?: {
+    global?: { max: number; timeWindow: string };
+    loginFailures?: { max: number; windowMs: number };
+    loginIp?: { max: number; timeWindow: string };
+  };
   logger?: boolean;
 }
 
@@ -82,9 +87,14 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: { code: "NOT_FOUND", message: "Route not found" } }));
 
   await app.register(healthRoutes, { db });
-  await app.register(authRoutes, { db, loginRateLimit: opts.rateLimit?.login ?? { max: 5, timeWindow: "15 minutes" } });
+  await app.register(authRoutes, {
+    db,
+    loginFailures: opts.rateLimit?.loginFailures ?? { max: 5, windowMs: 15 * 60_000 },
+    loginIpRateLimit: opts.rateLimit?.loginIp ?? { max: 30, timeWindow: "15 minutes" },
+  });
   await app.register(userRoutes, { db });
   await app.register(auditRoutes, { db });
+  await app.register(dashboardRoutes, { db });
 
   return app;
 }

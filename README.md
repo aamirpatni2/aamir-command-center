@@ -4,7 +4,7 @@ A personal multi-agent **AI Business Operating System** for running an AI educat
 students and courses, content, research, marketing, analytics and automations. An Orchestrator Agent sends work
 to specialist agents, and a human approves anything that leaves the system.
 
-> Status: **Milestone 1 complete** (repository, database, authentication). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+> Status: **Milestone 2 complete** (repository, database, authentication, dashboard shell). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Quick start (local)
 
@@ -17,8 +17,12 @@ docker compose up -d            # Postgres (pgvector) + Redis
 pnpm db:migrate
 OWNER_EMAIL=you@example.com OWNER_NAME="Aamir" OWNER_PASSWORD='a-long-passphrase' pnpm db:create-owner
 pnpm dev:api                    # http://localhost:4000/api/health
+pnpm dev:web                    # http://localhost:5173 — sign in with the owner account
 pnpm test                       # needs the acc_test database (created by docker compose)
+E2E_EMAIL=... E2E_PASSWORD=... pnpm e2e   # browser smoke test (API + web must be running)
 ```
+
+![Dashboard](docs/screenshots/dashboard-desktop-sample-data.png)
 
 ## Docs
 - [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Implementation plan](docs/IMPLEMENTATION_PLAN.md)

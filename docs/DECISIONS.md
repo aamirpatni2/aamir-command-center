@@ -43,5 +43,17 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-011 — Mocks only behind interfaces, clearly labelled
 - **Why**: Project rule: never fake integrations. When credentials aren't there, the adapter reports `status: "not_configured"`. Mock adapters live in `*/mock/*` files, only load when `NODE_ENV=test` or `ACC_ENABLE_MOCKS=true`, and every result they return carries `mock: true`.
 
+## ADR-013 — Dashboard talks to the API same-origin
+- **Decision**: In development Vite proxies `/api` to the API; in production the web build is served from the same site as the API (a reverse proxy or the API itself, decided in M15).
+- **Why**: The session cookie stays `SameSite=Strict` and no CORS credentials are needed in normal use. The CORS allow-list stays only as a fallback.
+
+## ADR-014 — No invented numbers in the UI
+- **Decision**: Roadmap pages show an explicit "arrives in Milestone N" state. Widgets without data show empty states. Stat tiles have no delta or trend until there's real history.
+- **Why**: A command center the operator makes decisions from must never show placeholder figures that look real.
+
+## ADR-015 — Login throttling counts failures, not requests
+- **Alternatives**: Plain request rate limit per IP + email (the first implementation).
+- **Why**: Counting successful logins let the owner lock themselves out by signing in normally (the e2e run caught this). Only failures count now, and success resets the counter. A looser per-IP request cap stays against credential spraying.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

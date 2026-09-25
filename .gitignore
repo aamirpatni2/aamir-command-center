@@ -8,3 +8,5 @@ coverage/
 .DS_Store
 .turbo/
 .vite/
+e2e/.results/
+playwright-report/

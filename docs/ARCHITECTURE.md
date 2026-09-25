@@ -1,6 +1,6 @@
 # Architecture — Aamir AI Command Center
 
-Version 1.0 · Status: Milestone 1 implemented
+Version 1.0 · Status: Milestone 2 implemented
 
 ## 1. What this system is
 

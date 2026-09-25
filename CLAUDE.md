@@ -6,11 +6,12 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 ## Commands
 - `pnpm install` · `pnpm typecheck` · `pnpm test` (needs Postgres; test DB `acc_test`)
 - `pnpm db:generate` (after schema edits) · `pnpm db:migrate` · `pnpm db:create-owner`
-- `pnpm dev:api` → http://localhost:4000 · local services: `docker compose up -d`
+- `pnpm dev:api` → http://localhost:4000 · `pnpm dev:web` → http://localhost:5173 · local services: `docker compose up -d`
+- `pnpm e2e` (Playwright; needs API + web running and `E2E_EMAIL`/`E2E_PASSWORD`)
 
 ## Layout
 `apps/api` Fastify API · `apps/web` React dashboard · `apps/worker` jobs ·
-`packages/{config,shared,database,agents,mcp,ui}` · `agents/` + `skills/` = runtime agent prompts/workflows ·
+`packages/{config,shared,database,agents,mcp,ui}` (ui = shared React components; theme tokens in `apps/web/src/index.css`) · `agents/` + `skills/` = runtime agent prompts/workflows ·
 `.claude/` = tooling for developing this repo.
 
 ## Non-negotiable rules
@@ -26,3 +27,7 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 ## Style
 ESM, strict TS, `.js` import suffixes, small modules, comments only where the reason is non-obvious.
 Urdu content: natural Pakistani Urdu; keep technical terms (AI, API, MCP) in English.
+
+## UI rules
+Dark theme tokens only (no raw hex in components). Status = icon + label, never colour alone.
+Never show placeholder numbers: unbuilt screens say "arrives in Milestone N", empty data shows an empty state.

@@ -4,31 +4,32 @@ import { loginRequestSchema, permissionsFor, type Role, type SessionResponse } f
 import { HttpError, parse, unauthorized } from "../lib/errors.js";
 import { requireAuth } from "../plugins/auth.js";
 import { auditMeta } from "../lib/audit.js";
+import { LoginThrottle } from "../lib/login-throttle.js";
 
 export interface AuthRouteOptions {
   db: Database;
-  loginRateLimit: { max: number; timeWindow: string };
+  /** Failed attempts allowed per IP + email inside the window. */
+  loginFailures: { max: number; windowMs: number };
+  /** Coarse cap on all login requests per IP (stops spraying many emails). */
+  loginIpRateLimit: { max: number; timeWindow: string };
 }
 
 export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
   const { db } = opts;
+  const throttle = new LoginThrottle(opts.loginFailures.max, opts.loginFailures.windowMs);
 
   app.post(
     "/api/auth/login",
     {
-      config: {
-        rateLimit: {
-          ...opts.loginRateLimit,
-          // Key on IP + email so one attacker can't lock everyone out, and one account can't be brute-forced.
-          keyGenerator: (req) => {
-            const email = (req.body as { email?: unknown } | undefined)?.email;
-            return `login:${req.ip}:${typeof email === "string" ? email.toLowerCase().slice(0, 254) : ""}`;
-          },
-        },
-      },
+      config: { rateLimit: { ...opts.loginIpRateLimit, keyGenerator: (req) => `login-ip:${req.ip}` } },
     },
     async (req, reply) => {
       const body = parse(loginRequestSchema, req.body);
+      const wait = throttle.retryAfter(req.ip, body.email);
+      if (wait > 0) {
+        reply.header("retry-after", String(wait));
+        throw new HttpError(429, "RATE_LIMITED", "Too many failed attempts. Try again later.");
+      }
       const [user] = await db
         .select()
         .from(schema.users)
@@ -37,6 +38,7 @@ export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
 
       const ok = user ? await verifyPassword(user.passwordHash, body.password) : (await burnPasswordCheck(body.password), false);
       if (!user || !ok || !user.isActive) {
+        throttle.recordFailure(req.ip, body.email);
         await writeAudit(db, {
           ...auditMeta(req),
           actorType: "system",
@@ -48,6 +50,7 @@ export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
         throw new HttpError(401, "INVALID_CREDENTIALS", "Invalid email or password");
       }
 
+      throttle.reset(req.ip, body.email);
       const session = await app.sessions.create(user.id, { ip: req.ip, userAgent: req.headers["user-agent"] });
       await db.update(schema.users).set({ lastLoginAt: new Date() }).where(eq(schema.users.id, user.id));
       await writeAudit(db, {

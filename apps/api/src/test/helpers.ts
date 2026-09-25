@@ -13,7 +13,8 @@ export interface TestContext {
 export async function setupTestApp(
   rateLimit: Parameters<typeof buildApp>[0]["rateLimit"] = {
     global: { max: 10_000, timeWindow: "1 minute" },
-    login: { max: 1_000, timeWindow: "1 minute" },
+    loginFailures: { max: 1_000, windowMs: 60_000 },
+    loginIp: { max: 1_000, timeWindow: "1 minute" },
   },
 ): Promise<TestContext> {
   const url = await resetTestDatabase();
