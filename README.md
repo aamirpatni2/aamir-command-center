@@ -4,7 +4,7 @@ A personal multi-agent **AI Business Operating System** for running an AI educat
 students and courses, content, research, marketing, analytics and automations. An Orchestrator Agent sends work
 to specialist agents, and a human approves anything that leaves the system.
 
-> Status: **Milestone 7 complete** (… Leads + scoring, WhatsApp inbox, courses/students/payments/certificates, Content Agent with review workflow and calendar). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+> Status: **Milestone 8 complete** (+ Research Agent with verified sources, Knowledge base with approval and hybrid search). Previously: **Milestone 7 complete** (… Leads + scoring, WhatsApp inbox, courses/students/payments/certificates, Content Agent with review workflow and calendar). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Quick start (local)
 

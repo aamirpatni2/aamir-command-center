@@ -113,7 +113,7 @@ export async function courseCatalog(db: DbOrTx, opts: { includeDraft?: boolean }
   const batches = await db
     .select({
       b: courseBatches,
-      enrolled: sql<number>`(select count(*)::int from enrollments e where e.batch_id = ${courseBatches.id} and e.status in ('pending','active','completed'))`,
+      enrolled: sql<number>`(select count(*)::int from enrollments e where e.batch_id = "course_batches"."id" and e.status in ('pending','active','completed'))`,
     })
     .from(courseBatches)
     .where(

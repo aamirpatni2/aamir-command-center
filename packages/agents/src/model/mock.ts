@@ -45,6 +45,27 @@ export class MockProvider implements ModelProvider {
     const finish = req.tools.find((t) => t.name === "finish");
     const props = Object.keys((finish?.inputSchema.properties as Record<string, unknown>) ?? {});
 
+    // Research demo: try the web (honestly reports not_configured without a key), then save an all-unverified report.
+    if (req.tools.some((t) => t.name === "research.save") && props.includes("output")) {
+      const results = req.messages.filter((m) => m.role === "tool_results");
+      if (results.length === 0) return { text: "[MOCK] Searching the web.", toolCalls: [{ name: "web.search", input: { query: request.slice(0, 120), freshness: "week" } }] };
+      if (results.length === 1) {
+        return {
+          toolCalls: [{
+            name: "research.save",
+            input: {
+              title: `[MOCK] ${request.slice(0, 90)}`,
+              summary: "[MOCK] Simulated research report. With a web search key and ANTHROPIC_API_KEY, real sources are searched, opened and verified.",
+              claims: [
+                { claim: "[MOCK] Example claim that would need a source", status: "verified", sources: [{ url: "https://example.com/not-actually-opened" }] },
+                { claim: "[MOCK] Example time-sensitive claim", status: "unverified", sources: [] },
+              ],
+              teachingNotes: "[MOCK] Teaching notes appear here.",
+            },
+          }],
+        };
+      }
+    }
     // Content demo: save one clearly-labelled mock Reel draft, then finish.
     if (req.tools.some((t) => t.name === "content.save") && props.includes("output")) {
       const saved = req.messages.some((m) => m.role === "tool_results" && m.results.some((r) => r.content.includes('"status":"draft"')));

@@ -63,7 +63,7 @@ export async function crmRoutes(app: FastifyInstance, opts: CrmRouteOptions) {
 
   app.get("/api/leads", { preHandler: requireAuth("leads:read") }, async (req) => {
     const q = parse(listQuery, req.query);
-    const whatsappConv = sql<string | null>`(select c.id from conversations c where c.contact_id = ${schema.leads.contactId} and c.channel = 'whatsapp' limit 1)`;
+    const whatsappConv = sql<string | null>`(select c.id from conversations c where c.contact_id = "leads"."contact_id" and c.channel = 'whatsapp' limit 1)`;
     const where = and(
       isNull(schema.leads.deletedAt),
       q.status ? eq(schema.leads.status, q.status) : undefined,
@@ -184,8 +184,9 @@ export async function crmRoutes(app: FastifyInstance, opts: CrmRouteOptions) {
   });
 
   // ── Conversations ──────────────────────────────────────────────────────
-  const pendingDrafts = (convId: unknown) =>
-    sql<number>`(select count(*)::int from approvals a where a.status = 'pending' and a.tool_name = 'whatsapp.send' and a.payload->>'conversationId' = ${convId}::text)`;
+  /** Correlated sub-queries always use fully qualified outer columns (drizzle renders bare "id" for single-table selects). */
+  const pendingDrafts = (convId: ReturnType<typeof sql.raw>) =>
+    sql<number>`(select count(*)::int from approvals a where a.status = 'pending' and a.tool_name = 'whatsapp.send' and a.payload->>'conversationId' = ${convId})`;
 
   app.get("/api/conversations", { preHandler: requireAuth("leads:read") }, async (req) => {
     const q = parse(z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }), req.query);
@@ -194,11 +195,11 @@ export async function crmRoutes(app: FastifyInstance, opts: CrmRouteOptions) {
         id: schema.conversations.id, channel: schema.conversations.channel, status: schema.conversations.status,
         lastMessageAt: schema.conversations.lastMessageAt,
         contactName: schema.contacts.name, contactPhone: schema.contacts.phone,
-        lastMessage: sql<string | null>`(select left(m.body, 140) from messages m where m.conversation_id = ${schema.conversations.id} order by m.created_at desc limit 1)`,
-        lastDirection: sql<string | null>`(select m.direction from messages m where m.conversation_id = ${schema.conversations.id} order by m.created_at desc limit 1)`,
-        leadId: sql<string | null>`(select l.id from leads l where l.contact_id = ${schema.conversations.contactId} and l.deleted_at is null order by l.created_at desc limit 1)`,
-        leadScore: sql<number | null>`(select l.score from leads l where l.contact_id = ${schema.conversations.contactId} and l.deleted_at is null order by l.created_at desc limit 1)`,
-        pendingDrafts: pendingDrafts(schema.conversations.id),
+        lastMessage: sql<string | null>`(select left(m.body, 140) from messages m where m.conversation_id = "conversations"."id" order by m.created_at desc limit 1)`,
+        lastDirection: sql<string | null>`(select m.direction from messages m where m.conversation_id = "conversations"."id" order by m.created_at desc limit 1)`,
+        leadId: sql<string | null>`(select l.id from leads l where l.contact_id = "conversations"."contact_id" and l.deleted_at is null order by l.created_at desc limit 1)`,
+        leadScore: sql<number | null>`(select l.score from leads l where l.contact_id = "conversations"."contact_id" and l.deleted_at is null order by l.created_at desc limit 1)`,
+        pendingDrafts: pendingDrafts(sql.raw(`"conversations"."id"::text`)),
       })
       .from(schema.conversations)
       .innerJoin(schema.contacts, eq(schema.contacts.id, schema.conversations.contactId))

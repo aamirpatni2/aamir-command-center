@@ -7,3 +7,4 @@ export { sql, eq, ne, and, or, isNull, isNotNull, desc, asc, gt, gte, lt, lte, i
 export * from "./crm.js";
 export * from "./education.js";
 export * from "./content.js";
+export * from "./knowledge.js";

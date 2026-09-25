@@ -179,7 +179,7 @@ export async function taskRoutes(app: FastifyInstance, opts: TaskRouteOptions) {
         errorCode: schema.agentRuns.errorCode,
         errorMessage: schema.agentRuns.errorMessage,
         resultText: sql<string | null>`left(${schema.agentRuns.output}->>'text', 240)`,
-        toolsUsed: sql<string[]>`coalesce((select array_agg(distinct m.tool_name) from agent_messages m where m.run_id = ${schema.agentRuns.id} and m.tool_name is not null), '{}')`,
+        toolsUsed: sql<string[]>`coalesce((select array_agg(distinct m.tool_name) from agent_messages m where m.run_id = "agent_runs"."id" and m.tool_name is not null), '{}')`,
       })
       .from(schema.agentRuns)
       .innerJoin(schema.agentTasks, eq(schema.agentTasks.id, schema.agentRuns.taskId))

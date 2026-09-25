@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–7)
+## Implemented (Milestones 1–8)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -64,13 +64,19 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | PATCH | `/api/content/:id` | `content:write` | edit text/title/language; re-runs checks; approved/scheduled → back to review; published → 409 |
 | POST | `/api/content/:id/status` | `content:write` or `content:approve` | `{status, note?, scheduledFor?, publishedUrl?}`; transitions enforced (409 otherwise); approve/schedule/publish need `content:approve` (owner/admin); scheduling needs a future date |
 | DELETE | `/api/content/:id` | `content:write` | soft delete (not published items) |
+| GET | `/api/knowledge` | `knowledge:read` | `?status&category&q` documents with chunk/embedding counts + search mode |
+| GET | `/api/knowledge/search` | `knowledge:read` | `?q&category` exactly what agents get from `kb.search` |
+| GET / POST / PATCH | `/api/knowledge[/:id]` | read / `knowledge:write` | drafts; editing approved → back to draft + unindexed |
+| POST | `/api/knowledge/:id/approve` | `knowledge:approve` | chunk + embed; falls back to full-text with a warning if embeddings fail |
+| POST | `/api/knowledge/:id/archive`, `/api/knowledge/reindex` | `knowledge:approve` | |
+| GET | `/api/memory` · POST `/api/memory/:id/decide` | read / `knowledge:approve` | proposed long-term memory → approved/rejected |
+| GET | `/api/research`, `/api/research/:id` | `knowledge:read` | research reports with claim status counts / claims + sources |
 | GET | `/api/dashboard/summary` | `analytics:read` | live counts (open tasks, new leads today, follow-ups due, active students, active agents, runs today, pending approvals), verified PKR revenue this month, 5 recent runs / pending approvals / open tasks. "Today" and "this month" use Asia/Karachi. |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/research`, `/api/knowledge` | 8 |
 | `/api/approvals` | 9 |
 | `/api/automations` | 10 |
 | `/api/mcp` | 11 |

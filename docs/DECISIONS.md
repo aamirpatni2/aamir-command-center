@@ -99,5 +99,15 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-028 — Content voice from Aamir's content system, truth rules on top
 - **Why**: The content playbook's hook examples include specific income figures. The system rule "never invent stats" wins: figures are only used with a source, otherwise non-numeric framing. The INCOME_CLAIM check enforces it.
 
+## ADR-029 — Research integrity enforced in code, not only in the prompt
+- **Why**: Prompts reduce invented sources but can't prevent them. `research.save` checks every cited URL against what this run actually retrieved and downgrades anything unbacked. The UI shows the downgrade note, so "verified" means verified.
+
+## ADR-030 — Hybrid knowledge search inside Postgres; Voyage for embeddings
+- **Alternatives**: a separate vector DB; embeddings only; OpenAI embeddings.
+- **Why**: Full-text search works with no extra key and handles Roman Urdu/Urdu tokens; embeddings add meaning-based matches when available. Keeping both in Postgres (pgvector HNSW + GIN) means one database, and approval status is enforced in the same query. Voyage is Anthropic's recommended embedding provider; 1024 dimensions balances quality and storage.
+
+## ADR-031 — Direct web search adapters instead of MCP servers for now
+- **Why**: Two small, tested HTTP adapters behind one interface are simpler and safer than running extra MCP server processes. They fit the ToolRegistry the same way an MCP-backed tool will (M11).
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

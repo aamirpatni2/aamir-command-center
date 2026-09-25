@@ -91,6 +91,11 @@ describe("conversations API", () => {
 
     const detail = await ctx.app.inject({ method: "GET", url: `/api/conversations/${conv.id}`, headers: viewer.headers });
     expect(detail.json()).toMatchObject({ contact: { phone: "+923331234567" }, lead: { score: 45 }, drafts: [] });
+    // Pending draft count is per conversation.
+    const [task] = await ctx.handle.db.insert(schema.agentTasks).values({ title: "t", input: "t" }).returning();
+    await ctx.handle.db.insert(schema.approvals).values({ taskId: task!.id, actionType: "external", toolName: "whatsapp.send", risk: "external", title: "Send", payload: { conversationId: conv.id, text: "hi" }, idempotencyKey: "pd-1" });
+    const again = (await ctx.app.inject({ method: "GET", url: "/api/conversations", headers: viewer.headers })).json().conversations[0];
+    expect(again.pendingDrafts).toBe(1);
     expect(detail.json().messages).toHaveLength(1);
   });
 

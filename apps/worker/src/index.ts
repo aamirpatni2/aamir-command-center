@@ -6,7 +6,7 @@ import { Redis } from "ioredis";
 import pino from "pino";
 import { loadEnv } from "@acc/config";
 import { createDb, eq, schema } from "@acc/database";
-import { createDefaultToolRegistry, createWhatsappTriageTask, executeTask, modelAvailability, RedisEventSink, resolveModel, TASK_QUEUE, TRIAGE_JOB } from "@acc/agents";
+import { createDefaultToolRegistry, createWhatsappTriageTask, embedderFromEnv, executeTask, modelAvailability, RedisEventSink, resolveModel, TASK_QUEUE, TRIAGE_JOB, webSearchFromEnv } from "@acc/agents";
 
 const env = loadEnv();
 const logger = pino({
@@ -18,7 +18,10 @@ const logger = pino({
 const handle = createDb(env.DATABASE_URL, { max: 5 });
 const publisher = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const events = new RedisEventSink(publisher);
-const tools = createDefaultToolRegistry();
+const webSearch = webSearchFromEnv(env);
+const embedder = embedderFromEnv(env);
+const tools = createDefaultToolRegistry({ webSearch, embedder });
+logger.info({ webSearch: webSearch?.id ?? "not configured", embeddings: embedder ? embedder.model : "not configured (full-text search only)" }, "integrations");
 
 const availability = modelAvailability(env);
 if (!availability.available) logger.warn({ reason: availability.reason }, "no model configured — tasks will fail until it is");

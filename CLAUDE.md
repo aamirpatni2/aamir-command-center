@@ -22,6 +22,7 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 - Validate every input with Zod; enforce permissions with `requireAuth("<permission>")` (see `packages/shared/src/roles.ts`).
 - Write an audit log (`writeAudit`) for auth, user, approval, external and destructive actions.
 - Schema changes: edit `packages/database/src/schema/*`, run `pnpm db:generate`, commit the SQL. Never edit applied migrations.
+- Correlated SQL sub-queries: write the outer column fully qualified (`"table"."col"`), never `${schema.table.col}` — drizzle renders it bare (`"id"`) in single-table selects, which silently binds to the inner table.
 - Record significant design choices in `docs/DECISIONS.md`.
 - Every milestone ends with: tests green, docs updated, report COMPLETED / TESTED / ISSUES / NEXT.
 

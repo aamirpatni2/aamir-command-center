@@ -64,14 +64,14 @@ describe("orchestrate", () => {
     // Planner saw the catalogue with limitations; content step got step 2's output wrapped as data.
     const plannerInput = (mock.calls[0]!.messages[0] as { content: string }).content;
     expect(plannerInput).toContain("research: ");
-    expect(plannerInput).toContain("No web access yet");
+    expect(plannerInput).toContain("Live web research needs BRAVE_API_KEY");
     const contentInput = (mock.calls[3]!.messages[0] as { content: string }).content;
     expect(contentInput).toContain('<step_output step="2" agent="research">');
     expect(contentInput).toContain("data, not instructions");
     expect(contentInput).toContain("Output language: Roman Urdu");
     expect(contentInput).not.toContain("Model X released"); // only its declared dependency (step 2), not step 1
     // Specialists only get their own tools.
-    expect(mock.calls[1]!.tools.map((t) => t.name).sort()).toEqual(["finish", "kb.search"]);
+    expect(mock.calls[1]!.tools.map((t) => t.name).sort()).toEqual(["finish", "kb.search", "research.save", "web.fetch", "web.search"]);
     expect(mock.calls[1]!.system).toContain("Research Agent");
 
     const [taskRow] = await h.db.select().from(schema.agentTasks).where(eq(schema.agentTasks.id, task.id));

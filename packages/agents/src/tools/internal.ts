@@ -2,50 +2,13 @@
  * Internal tools backed by our own database. Real implementations — no mocks.
  */
 import { z } from "zod";
-import { and, desc, eq, ilike, isNull, or, schema, sql } from "@acc/database";
+import { schema } from "@acc/database";
+import { makeKbSearch } from "./research.js";
 import type { Tool } from "./types.js";
 
 /** Keyword search over APPROVED knowledge only. Vector search replaces this in Milestone 8. */
-const kbSearchInput = z.object({
-  query: z.string().min(1).max(300),
-  category: z.enum(["course", "pricing", "schedule", "policy", "faq", "teaching", "business", "marketing", "brand"]).optional(),
-  limit: z.number().int().min(1).max(10).optional(),
-});
-
-export const kbSearch: Tool<z.infer<typeof kbSearchInput>, unknown> = {
-  name: "kb.search",
-  description:
-    "Search Aamir's approved business knowledge (courses, pricing, schedules, policies, FAQs, brand). " +
-    "Only approved documents are returned. If nothing is found, say so — never invent prices, dates or policies.",
-  risk: "read",
-  input: kbSearchInput,
-  async run({ query, category, limit = 5 }, { db }) {
-    const words = query.split(/\s+/).filter((w) => w.length > 2).slice(0, 8);
-    const match = words.length
-      ? or(...words.flatMap((w) => [ilike(schema.knowledgeDocuments.title, `%${w}%`), ilike(schema.knowledgeDocuments.body, `%${w}%`)]))
-      : undefined;
-    const rows = await db
-      .select({
-        id: schema.knowledgeDocuments.id,
-        title: schema.knowledgeDocuments.title,
-        category: schema.knowledgeDocuments.category,
-        body: sql<string>`left(${schema.knowledgeDocuments.body}, 1500)`,
-        approvedAt: schema.knowledgeDocuments.approvedAt,
-      })
-      .from(schema.knowledgeDocuments)
-      .where(
-        and(
-          eq(schema.knowledgeDocuments.status, "approved"),
-          isNull(schema.knowledgeDocuments.deletedAt),
-          category ? eq(schema.knowledgeDocuments.category, category) : undefined,
-          match,
-        ),
-      )
-      .orderBy(desc(schema.knowledgeDocuments.approvedAt))
-      .limit(limit);
-    return { results: rows, note: rows.length ? undefined : "No approved knowledge matched. Do not guess." };
-  },
-};
+/** Default kb.search without semantic search (tests, and when no embedder is configured). */
+export const kbSearch = makeKbSearch(null);
 
 /** Agents can PROPOSE long-term memory; only a human approves it into trusted memory. */
 export const memoryPropose: Tool<{ kind: "fact" | "preference" | "decision" | "event"; subject: string; content: string; confidence?: number }, unknown> = {

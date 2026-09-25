@@ -17,6 +17,7 @@ import { taskRoutes } from "./routes/tasks.js";
 import { crmRoutes } from "./routes/crm.js";
 import { educationRoutes } from "./routes/education.js";
 import { contentRoutes } from "./routes/content.js";
+import { knowledgeRoutes } from "./routes/knowledge.js";
 import { whatsappWebhookRoutes } from "./routes/webhooks.js";
 import { TaskEventHub } from "./lib/task-events.js";
 import { createTaskQueue, type TaskQueue } from "@acc/agents";
@@ -114,6 +115,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(crmRoutes, { db, env, queue });
   await app.register(educationRoutes, { db });
   await app.register(contentRoutes, { db });
+  await app.register(knowledgeRoutes, { db, env });
   await app.register(whatsappWebhookRoutes, { db, env, queue });
 
   return app;

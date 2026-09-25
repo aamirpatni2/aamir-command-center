@@ -29,8 +29,8 @@ test("login → dashboard → navigation → logs → logout", async ({ page, is
 
   // A roadmap page shows an honest placeholder, not fake data.
   await openNav();
-  await page.getByRole("link", { name: /AI Research/ }).first().click();
-  await expect(page.getByText("Arrives in Milestone 8")).toBeVisible();
+  await page.getByRole("link", { name: /MCP Tools/ }).first().click();
+  await expect(page.getByText("Arrives in Milestone 11")).toBeVisible();
 
   await openNav();
   await page.getByRole("link", { name: /Logs/ }).click();

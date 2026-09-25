@@ -31,7 +31,7 @@ describe("tasks API", () => {
     expect(res.statusCode).toBe(200);
     const ids = res.json().agents.map((a: { id: string }) => a.id);
     expect(ids).toEqual(["orchestrator", "sales", "whatsapp", "content", "research", "student", "marketing", "analytics", "course"]);
-    expect(res.json().agents.find((a: { id: string }) => a.id === "research").limitations).toContain("web access");
+    expect(res.json().agents.find((a: { id: string }) => a.id === "research").limitations).toContain("BRAVE_API_KEY");
     expect(res.json().model).toEqual({ available: true, mock: true });
   });
 

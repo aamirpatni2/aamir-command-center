@@ -59,9 +59,10 @@ export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
     effort: "high",
     tools: ["kb.search", "course.catalog", "content.search", "content.save"],
   }),
-  research: specialist("research", "Researches AI tools, models, agentic AI, MCP and automation; verifies claims; turns findings into teaching material.", {
+  research: specialist("research", "Researches AI tools, models, agentic AI, MCP and automation on the live web; verifies each claim against sources it actually opened; saves research reports; turns findings into teaching material.", {
     effort: "high",
-    limitations: "No web access yet (Milestone 8): cannot see today's news or fetch sources; all time-sensitive claims come back unverified.",
+    tools: ["web.search", "web.fetch", "kb.search", "research.save"],
+    limitations: "Live web research needs BRAVE_API_KEY or TAVILY_API_KEY; without it the web tools report not_configured and every time-sensitive claim stays unverified.",
   }),
   student: specialist("student", "Student records: enrolment, attendance, assignments, payments and balances, recordings, reminders, certificate eligibility, support.", {
     tools: ["kb.search", "course.catalog", "student.search", "student.get", "student.message", "certificate.request"],

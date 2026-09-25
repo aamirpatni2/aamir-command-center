@@ -18,10 +18,37 @@ import { INTERNAL_TOOLS } from "./tools/internal.js";
 import { CRM_TOOLS } from "./tools/crm.js";
 import { EDUCATION_TOOLS } from "./tools/education.js";
 import { CONTENT_TOOLS } from "./tools/content.js";
-/** Registry with every production tool registered. */
-export function createDefaultToolRegistry(): ToolRegistry {
-  return new ToolRegistry().register(...INTERNAL_TOOLS, ...CRM_TOOLS, ...EDUCATION_TOOLS, ...CONTENT_TOOLS);
+import { makeKbSearch, makeWebFetch, makeWebSearch, researchSave } from "./tools/research.js";
+import { memoryPropose } from "./tools/internal.js";
+import type { Embedder } from "@acc/database";
+import type { WebSearchProvider } from "./integrations/web/search.js";
+import type { Resolver } from "./integrations/web/fetch.js";
+
+export interface ToolRegistryOptions {
+  webSearch?: WebSearchProvider | null;
+  embedder?: Embedder | null;
+  /** For tests: fake network and DNS for web.fetch. */
+  fetchImpl?: typeof fetch;
+  resolve?: Resolver;
 }
+
+/** Registry with every production tool registered. Integrations that aren't configured report not_configured. */
+export function createDefaultToolRegistry(opts: ToolRegistryOptions = {}): ToolRegistry {
+  return new ToolRegistry().register(
+    makeKbSearch(opts.embedder ?? null),
+    memoryPropose,
+    ...CRM_TOOLS,
+    ...EDUCATION_TOOLS,
+    ...CONTENT_TOOLS,
+    makeWebSearch(opts.webSearch ?? null),
+    makeWebFetch({ enabled: !!opts.webSearch, fetchImpl: opts.fetchImpl, resolve: opts.resolve }),
+    researchSave,
+  );
+}
+export { makeKbSearch, makeWebFetch, makeWebSearch, researchSave } from "./tools/research.js";
+export * from "./integrations/web/search.js";
+export * from "./integrations/web/fetch.js";
+export * from "./integrations/embeddings/voyage.js";
 export { CRM_TOOLS } from "./tools/crm.js";
 export { EDUCATION_TOOLS } from "./tools/education.js";
 export { CONTENT_TOOLS } from "./tools/content.js";

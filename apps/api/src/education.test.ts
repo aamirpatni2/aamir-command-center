@@ -59,6 +59,13 @@ describe("student journey: course → batch → enrol → pay → verify → cla
     expect((await call(viewer, "POST", "/api/enrollments", { batchId, phone: "03009999999" })).statusCode).toBe(403);
   });
 
+  it("catalogue enrolled count / seats left are per batch (correlated sub-query regression)", async () => {
+    const other = await call(owner, "POST", `/api/courses/${courseId}/batches`, { name: "Empty batch", capacity: 5, status: "enrolling" });
+    const batches = (await call(viewer, "GET", "/api/courses")).json().courses[0].batches;
+    expect(batches.find((b: { id: string }) => b.id === batchId)).toMatchObject({ enrolled: 1, seatsLeft: 1 });
+    expect(batches.find((b: { id: string }) => b.id === other.json().batch.id)).toMatchObject({ enrolled: 0, seatsLeft: 5 });
+  });
+
   it("capacity is enforced", async () => {
     expect((await call(operator, "POST", "/api/enrollments", { batchId, phone: "03001111111", name: "B" })).statusCode).toBe(201);
     const full = await call(operator, "POST", "/api/enrollments", { batchId, phone: "03002222222", name: "C" });

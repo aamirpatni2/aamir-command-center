@@ -11,6 +11,7 @@ const INTEGRATION_LABELS: Record<string, { label: string; milestone: number }> =
   google_ai: { label: "Google AI", milestone: 3 },
   whatsapp: { label: "WhatsApp Cloud API", milestone: 5 },
   web_search: { label: "Web search (Brave / Tavily)", milestone: 8 },
+  embeddings: { label: "Semantic search (Voyage AI)", milestone: 8 },
   google_workspace: { label: "Google Workspace", milestone: 11 },
   canva: { label: "Canva", milestone: 11 },
   meta_ads: { label: "Meta Ads (read-only)", milestone: 12 },

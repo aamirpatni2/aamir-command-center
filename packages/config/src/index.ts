@@ -53,6 +53,11 @@ export const envSchema = z
     /** Wait this long after a message before triage, so bursts of messages are handled together. */
     WHATSAPP_TRIAGE_DELAY_SECONDS: z.coerce.number().int().min(0).max(3600).default(45),
 
+    BRAVE_API_KEY: optionalString,
+    TAVILY_API_KEY: optionalString,
+    VOYAGE_API_KEY: optionalString,
+    EMBEDDING_MODEL: z.string().default("voyage-3.5"),
+
     ACC_ENABLE_MOCKS: z
       .string()
       .optional()
@@ -109,6 +114,7 @@ export function integrationStatus(env: NodeJS.ProcessEnv = process.env) {
     google_ai: has("GOOGLE_AI_API_KEY"),
     whatsapp: has("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN"),
     web_search: has("BRAVE_API_KEY") || has("TAVILY_API_KEY"),
+    embeddings: has("VOYAGE_API_KEY"),
     google_workspace: has("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"),
     canva: has("CANVA_CLIENT_ID", "CANVA_CLIENT_SECRET"),
     meta_ads: has("META_ADS_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"),

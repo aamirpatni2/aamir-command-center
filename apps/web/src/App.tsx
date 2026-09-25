@@ -21,6 +21,8 @@ import { ClassesPage } from "./pages/ClassesPage.js";
 import { ContentPage, CreativesPage, ReelsPage } from "./pages/ContentPage.js";
 import { ContentDetailPage } from "./pages/ContentDetailPage.js";
 import { CalendarPage } from "./pages/CalendarPage.js";
+import { KnowledgePage } from "./pages/KnowledgePage.js";
+import { ResearchPage } from "./pages/ResearchPage.js";
 import { ALL_NAV_ITEMS } from "./nav.js";
 import type { Permission } from "@acc/shared";
 
@@ -57,6 +59,8 @@ const READY: Record<string, ReactNode> = {
   "/reels": <ReelsPage />,
   "/creatives": <CreativesPage />,
   "/calendar": <CalendarPage />,
+  "/knowledge": <KnowledgePage />,
+  "/research": <ResearchPage />,
 };
 
 export function App() {
@@ -83,6 +87,7 @@ export function App() {
         <Route path="/batches/:id" element={<Guard permission="courses:read"><BatchPage /></Guard>} />
         <Route path="/students/:id" element={<Guard permission="students:read"><StudentDetailPage /></Guard>} />
         <Route path="/content/:id" element={<Guard permission="content:read"><ContentDetailPage /></Guard>} />
+        <Route path="/research/:id" element={<Guard permission="knowledge:read"><ResearchPage /></Guard>} />
         <Route path="*" element={<PageHeader title="Page not found" description="That page doesn't exist." />} />
       </Route>
     </Routes>

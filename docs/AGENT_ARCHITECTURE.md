@@ -62,6 +62,13 @@ Persistence: `agent_tasks.plan`, one `agent_steps` row per step (status tracked)
 - Prompt encodes Aamir's content system (voice, hook frameworks, Reel/YouTube structures, repurposing) with truth rules that override style: no invented stats, income figures or testimonials; prices and dates only from the catalogue.
 - Tool schemas are tested to be model-compatible (top-level JSON object) for every agent.
 
+### As built (Milestone 8): Research + Knowledge
+- Research Agent tools: `web.search` (Brave or Tavily), `web.fetch` (SSRF-safe: http(s) only, public IPs after DNS resolution, redirects re-checked, 2 MB / 15 s limits, text only), `kb.search`, `research.save`.
+- `research.save` enforces integrity in code: sources are kept only if their URL appears in this run's `web.search`/`web.fetch` results; a "verified" or "contradicted" claim without such a source is downgraded to unverified with a note. Reports are stored in `research_reports`.
+- Without a web key the tools return `not_configured`: no fake results.
+- Knowledge (RAG): approving a document chunks it (~900 chars, overlap) and embeds chunks with Voyage (`voyage-3.5`, 1024-d) when `VOYAGE_API_KEY` is set. `kb.search` is hybrid: Postgres full-text (`simple` config: English, Roman Urdu, Urdu) + pgvector cosine (HNSW), merged by reciprocal rank fusion, one best chunk per document. Editing approved knowledge returns it to draft and removes it from search until re-approved.
+- Memory: `memory.propose` items are reviewed on the Knowledge page (keep/discard).
+
 Specialists today: all eight exist with prompts in `agents/<id>/prompt.md` + `agents/_shared.md`. Until their data/tools arrive (CRM M5, students M6, web M8, analytics M12) each carries a `limitations` note that the planner sees and the agent must respect. For example, the Research Agent returns every time-sensitive claim as unverified because it has no web access yet.
 
 Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, real model). CI tests check the guard-rails (schema, dependencies, failure handling) with scripted mocks.

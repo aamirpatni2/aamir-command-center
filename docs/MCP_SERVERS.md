@@ -9,7 +9,7 @@ Rule: install only what a milestone actually needs. No server is active yet (Mil
 |---|---|---|---|---|
 | 1 | Database | internal tools over Postgres (not MCP) | internal | 3 |
 | 2 | Filesystem | `@modelcontextprotocol/server-filesystem` (scoped to `/data/uploads`) | planned | 11 |
-| 3 | Web / research | Brave Search MCP or Tavily MCP + fetch | planned | 8 |
+| 3 | Web / research | Brave Search API or Tavily API (direct adapters) + SSRF-safe fetch | **built** (needs `BRAVE_API_KEY` or `TAVILY_API_KEY`) | 8 |
 | 4 | GitHub | `github/github-mcp-server` | planned (optional) | 11 |
 | 5 | Google (Drive, Calendar, Gmail) | Google Workspace MCP | planned | 11 |
 | 6 | WhatsApp | WhatsApp Cloud API (official Meta Graph API) — direct adapter | **receive: built** (webhook); send: client built, executes on approval in M9 | 5/9 |
