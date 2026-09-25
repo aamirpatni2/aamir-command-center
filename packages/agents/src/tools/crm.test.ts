@@ -24,6 +24,25 @@ afterAll(async () => h?.close());
 
 const finishStep = (summary: string) => ({ toolCalls: [{ name: "finish", input: { summary, output: summary, sources: [], unverifiedClaims: [], blockers: [] } }] });
 
+describe("education tools", () => {
+  it("course.catalog returns only active courses with today's price, and says so when empty", async () => {
+    const reg = createDefaultToolRegistry();
+    const task = (await h.db.select().from(schema.agentTasks))[0] ?? (await h.db.insert(schema.agentTasks).values({ title: "t", input: "t" }).returning())[0]!;
+    const [run] = await h.db.insert(schema.agentRuns).values({ taskId: task.id, agentId: "sales" }).returning();
+    const ctx = { db: h.db, taskId: task.id, runId: run!.id, agentId: "sales" as const, toolCallId: "c" };
+    const empty = await reg.execute(["course.catalog"], { id: "1", name: "course.catalog", input: {} }, ctx);
+    expect(empty).toMatchObject({ status: "ok", output: { courses: [], note: expect.stringContaining("Do not quote") } });
+
+    const [active] = await h.db.insert(schema.courses).values({ slug: "ai", title: "Practical AI", status: "active", priceMinor: 800_000 }).returning();
+    await h.db.insert(schema.courses).values({ slug: "draft", title: "Secret draft", status: "draft" });
+    await h.db.insert(schema.courseBatches).values({ courseId: active!.id, name: "Batch 2", status: "enrolling", earlyBirdPriceMinor: 500_000, earlyBirdUntil: "2999-01-01", startsOn: "2026-10-01" });
+    const r = await reg.execute(["course.catalog"], { id: "2", name: "course.catalog", input: {} }, ctx);
+    const out = (r as { output: { courses: { title: string; batches: { priceToday: string; earlyBird: { activeToday: boolean } }[] }[] } }).output;
+    expect(out.courses.map((c) => c.title)).toEqual(["Practical AI"]);
+    expect(out.courses[0]!.batches[0]).toMatchObject({ priceToday: "PKR 5,000", earlyBird: { activeToday: true } });
+  });
+});
+
 describe("WhatsApp triage (pre-planned task through the real registry)", () => {
   it("reads the conversation, submits a reply for approval, updates the lead — never sends", async () => {
     const task = await createWhatsappTriageTask(h.db, conversationId);

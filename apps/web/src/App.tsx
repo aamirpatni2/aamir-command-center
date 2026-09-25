@@ -13,6 +13,11 @@ import { AgentsPage } from "./pages/AgentsPage.js";
 import { LeadsPage } from "./pages/LeadsPage.js";
 import { LeadDetailPage } from "./pages/LeadDetailPage.js";
 import { ConversationsPage } from "./pages/ConversationsPage.js";
+import { CoursesPage } from "./pages/CoursesPage.js";
+import { BatchPage } from "./pages/BatchPage.js";
+import { StudentsPage } from "./pages/StudentsPage.js";
+import { StudentDetailPage } from "./pages/StudentDetailPage.js";
+import { ClassesPage } from "./pages/ClassesPage.js";
 import { ALL_NAV_ITEMS } from "./nav.js";
 import type { Permission } from "@acc/shared";
 
@@ -42,6 +47,9 @@ const READY: Record<string, ReactNode> = {
   "/agents": <AgentsPage />,
   "/leads": <LeadsPage />,
   "/conversations": <ConversationsPage />,
+  "/courses": <CoursesPage />,
+  "/students": <StudentsPage />,
+  "/classes": <ClassesPage />,
 };
 
 export function App() {
@@ -65,6 +73,8 @@ export function App() {
         <Route path="/tasks/:id" element={<Guard permission="tasks:read"><TaskDetailPage /></Guard>} />
         <Route path="/leads/:id" element={<Guard permission="leads:read"><LeadDetailPage /></Guard>} />
         <Route path="/conversations/:id" element={<Guard permission="leads:read"><ConversationsPage /></Guard>} />
+        <Route path="/batches/:id" element={<Guard permission="courses:read"><BatchPage /></Guard>} />
+        <Route path="/students/:id" element={<Guard permission="students:read"><StudentDetailPage /></Guard>} />
         <Route path="*" element={<PageHeader title="Page not found" description="That page doesn't exist." />} />
       </Route>
     </Routes>

@@ -49,23 +49,26 @@ export const orchestratorReview: AgentDefinition = {
 
 export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
   sales: specialist("sales", "Lead qualification and pipeline: searches and reads leads and their conversations, explains scores, recommends courses, schedules follow-ups, updates lead status and notes.", {
-    tools: ["kb.search", "crm.lead.search", "crm.lead.get", "crm.lead.update"],
+    tools: ["kb.search", "course.catalog", "crm.lead.search", "crm.lead.get", "crm.lead.update"],
   }),
   whatsapp: specialist("whatsapp", "Reads WhatsApp conversations, classifies intent, flags hot leads, drafts replies (sent only after approval), updates the lead and schedules follow-ups.", {
-    tools: ["kb.search", "conversation.read", "crm.lead.update", "whatsapp.send"],
+    tools: ["kb.search", "course.catalog", "conversation.read", "crm.lead.update", "whatsapp.send"],
     limitations: "Approved replies are actually sent once the Approval Center executes actions (Milestone 9) and WhatsApp credentials are configured.",
   }),
   content: specialist("content", "Content ideas, hooks, scripts, captions, social posts, Reel concepts, scene plans, AI image/video prompts, content calendars (Urdu, Roman Urdu, English).", {
     effort: "high",
+    tools: ["kb.search", "course.catalog"],
   }),
   research: specialist("research", "Researches AI tools, models, agentic AI, MCP and automation; verifies claims; turns findings into teaching material.", {
     effort: "high",
     limitations: "No web access yet (Milestone 8): cannot see today's news or fetch sources; all time-sensitive claims come back unverified.",
   }),
-  student: specialist("student", "Student profiles, enrolment, progress, attendance, assignments, recordings, reminders, certificates, support.", {
-    limitations: "No student records yet (Milestone 6): drafts communications and answers policy questions from approved knowledge.",
+  student: specialist("student", "Student records: enrolment, attendance, assignments, payments and balances, recordings, reminders, certificate eligibility, support.", {
+    tools: ["kb.search", "course.catalog", "student.search", "student.get", "student.message", "certificate.request"],
+    limitations: "Messages and certificate requests go to approval; they are executed once the Approval Center runs actions (Milestone 9).",
   }),
   marketing: specialist("marketing", "Campaign analysis, ad copy, hooks, creative ideas, audience hypotheses, performance summaries.", {
+    tools: ["kb.search", "course.catalog"],
     limitations: "No ad account data yet (Milestone 12): analyses only numbers provided; never changes campaigns or budgets.",
   }),
   analytics: specialist("analytics", "Revenue, lead, conversion, course, content, campaign and agent analytics; daily/weekly reports.", {
@@ -73,6 +76,7 @@ export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
   }),
   course: specialist("course", "Course structure, lesson plans, teaching material, assignments, quizzes, course documentation, learning support.", {
     effort: "high",
+    tools: ["kb.search", "course.catalog"],
   }),
 };
 

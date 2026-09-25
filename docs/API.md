@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–5)
+## Implemented (Milestones 1–6)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -41,13 +41,28 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/conversations/:id/triage` | `tasks:create` | runs the WhatsApp Agent on this conversation now → 202 `{task}` |
 | GET | `/api/webhooks/whatsapp` | public | Meta subscription handshake (`hub.verify_token`) |
 | POST | `/api/webhooks/whatsapp` | HMAC | `X-Hub-Signature-256` over the raw body with `WHATSAPP_APP_SECRET` (401 if wrong, 503 if not configured). Identical body replayed → `{status: "duplicate"}`; duplicate message ids ignored; failed deliveries can be retried; unknown shapes acknowledged as `ignored` |
+| GET | `/api/courses` | `courses:read` | courses (incl. drafts) with batches, enrolled count, seats left, today's price |
+| POST / PATCH | `/api/courses`, `/api/courses/:id` | `courses:write` | slug unique (409) |
+| POST | `/api/courses/:id/batches` | `courses:write` | dates validated; early-bird needs price + date |
+| PATCH / GET | `/api/batches/:id` | write / `courses:read` | GET = batch, course, roster with progress, classes, assignments |
+| GET | `/api/students` | `students:read` | `?batchId&q` enrolments with progress |
+| POST | `/api/enrollments` | `students:write` | `{batchId, phone, name?, email?}` creates contact/student/enrolment (pending); capacity enforced; already enrolled → 409; open lead → negotiating |
+| GET | `/api/students/:id` | `students:read` | enrolments with progress, payments, certificate checks, linked lead |
+| PATCH | `/api/enrollments/:id` | `students:write` | status |
+| POST | `/api/enrollments/:id/payments` | `payments:write` | recorded as pending; duplicate method+reference → 409 |
+| POST | `/api/payments/:id/verify` | `payments:verify` (owner/admin) | pending → verified; activates enrolment; lead → won; audited; twice → 409 |
+| GET | `/api/classes` | `students:read` | `?batchId&upcoming=true` with attendance summary |
+| POST / PATCH | `/api/batches/:id/classes`, `/api/classes/:id` | `students:write` | schedule, meeting link, recording |
+| PUT | `/api/classes/:id/attendance` | `students:write` | `{attendance: {enrollmentId: present/late/absent}}`; rejects enrolments from other batches |
+| POST | `/api/batches/:id/assignments` | `students:write` | |
+| PUT | `/api/assignments/:id/submissions/:enrollmentId` | `students:write` | upsert status/score/feedback |
+| POST | `/api/enrollments/:id/certificate` | `certificates:issue` (owner/admin) | 409 `NOT_ELIGIBLE` with failing checks; issued once; enrolment → completed |
 | GET | `/api/dashboard/summary` | `analytics:read` | live counts (open tasks, new leads today, follow-ups due, active students, active agents, runs today, pending approvals), verified PKR revenue this month, 5 recent runs / pending approvals / open tasks. "Today" and "this month" use Asia/Karachi. |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/students`, `/api/courses` | 6 |
 | `/api/content` | 7 |
 | `/api/research`, `/api/knowledge` | 8 |
 | `/api/approvals` | 9 |

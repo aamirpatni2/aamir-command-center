@@ -87,5 +87,11 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-024 — Official WhatsApp Cloud API only
 - **Why**: Unofficial WhatsApp Web automation breaks WhatsApp's terms and risks the business number being banned. The Cloud API has signed webhooks, delivery receipts and templates.
 
+## ADR-025 — The course catalogue is the only source of prices and dates
+- **Why**: Quoting the wrong fee or start date to a customer is the costliest mistake an agent can make. Prices, early-bird deadlines, dates and seats come from structured course and batch records via `course.catalog`, which hides drafts, instead of from free text. Early-bird is evaluated on the Pakistan calendar date.
+
+## ADR-026 — Money is verified by a person
+- **Why**: JazzCash, EasyPaisa and bank transfers are confirmed by checking the account, which no API does for us yet. Payments are recorded as pending by anyone with `payments:write`; only owner/admin can verify. Only verified amounts count towards balance, revenue and certificates.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

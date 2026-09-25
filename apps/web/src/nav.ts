@@ -36,9 +36,9 @@ export const NAV: NavSection[] = [
   {
     title: "Education",
     items: [
-      { path: "/students", label: "Students", icon: GraduationCap, milestone: 6, permission: "students:read", description: "Student profiles, progress, attendance and certificates" },
-      { path: "/courses", label: "Courses", icon: BookOpen, milestone: 6, permission: "courses:read", description: "Courses, batches, pricing and schedules" },
-      { path: "/classes", label: "Classes", icon: CalendarDays, milestone: 6, permission: "students:read", description: "Class schedule, recordings and attendance" },
+      { path: "/students", ready: true, label: "Students", icon: GraduationCap, milestone: 6, permission: "students:read", description: "Student profiles, progress, attendance and certificates" },
+      { path: "/courses", ready: true, label: "Courses", icon: BookOpen, milestone: 6, permission: "courses:read", description: "Courses, batches, pricing and schedules" },
+      { path: "/classes", ready: true, label: "Classes", icon: CalendarDays, milestone: 6, permission: "students:read", description: "Class schedule, recordings and attendance" },
       { path: "/reports", label: "Reports", icon: FileText, milestone: 12, permission: "analytics:read", description: "Daily and weekly business reports" },
     ],
   },

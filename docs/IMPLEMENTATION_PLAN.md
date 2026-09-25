@@ -10,8 +10,8 @@ Each milestone runs: implement → test → inspect errors → fix → re-test �
 | 3 | Agent runtime | `ModelProvider` (Anthropic + Mock), `ToolRegistry` with risk policy, `AgentRunner` loop, run/step/message persistence, BullMQ worker, SSE run stream | agent test with MockProvider; real Claude smoke test when key present | ✅ done (real-Claude smoke test pending the API key) |
 | 4 | Orchestrator | classify → plan → delegate → verify → summarise with `agent_steps`; first specialist agents; plan view in task detail | routing guard-rail tests + real-model routing eval (`pnpm eval:routing`, needs the key) | ✅ done (eval pending the API key) |
 | 5 | Sales Agent + Leads | leads/contacts API + UI, documented scoring rules, duplicate handling, WhatsApp webhook (signature, replay) + WhatsApp Agent drafting | duplicate lead/message + webhook replay tests | ✅ done |
-| 6 | Student Agent + Courses | courses/batches/students/enrollments/classes/assignments/payments API + UI | enrollment + certificate rules tests | ⏭ next |
-| 7 | Content Agent | content items, Urdu/English generation, calendar view, Reels/scripts/prompts | output schema tests, language rules | |
+| 6 | Student Agent + Courses | courses/batches/students/enrollments/classes/assignments/payments API + UI | enrollment + certificate rules tests | ✅ done |
+| 7 | Content Agent | content items, Urdu/English generation, calendar view, Reels/scripts/prompts | output schema tests, language rules | ⏭ next |
 | 8 | Research Agent | web research MCP, source-backed findings, verification pass, KB ingestion + embeddings | unverified-claim test | |
 | 9 | Approval Center | pending/approve/reject/edit UI, idempotent execution, audit | approval + unauthorized-approval tests | |
 | 10 | Automation Engine | trigger → condition → agent → tool → approval → action → log; cron rules (morning research) | workflow tests | |
@@ -26,6 +26,7 @@ Each milestone runs: implement → test → inspect errors → fix → re-test �
 - **M2**: react, react-dom, react-router, vite, @vitejs/plugin-react, tailwindcss, @tanstack/react-query, lucide-react.
 - **M3**: @anthropic-ai/sdk, bullmq, ioredis.
 - **M8**: embedding provider (decision at M8), @modelcontextprotocol/sdk.
+- **M6 (as built)**: certificate + fee rules are a STARTER set (`skills/student/POLICIES.md`); `course.catalog` is the only source agents use for prices/dates; payment verification is human-only (owner/admin).
 - **M5 (as built)**: scoring rules are a STARTER set pending Aamir's approval (`skills/sales/SCORING.md`); WhatsApp receive path is live via webhook, sending approved replies lands with M9; `pnpm whatsapp:simulate` for local testing.
 - **M4 (as built)**: all 8 specialists defined with honest `limitations` until their data/tools arrive; plan → sequential delegation → review; routing eval script.
 - **M3 (as built)**: Tasks API + Tasks/Task detail/Agents screens pulled forward from M4 so the runtime is usable end-to-end; BullMQ pinned to v5 with ioredis 5.

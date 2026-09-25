@@ -52,6 +52,11 @@ Persistence: `agent_tasks.plan`, one `agent_steps` row per step (status tracked)
 - Inbound WhatsApp → webhook → `ingestInboundMessage` (contact/conversation/message/lead in one transaction, idempotent on provider message id) → debounced **triage job** → pre-planned task (`preset: true, skipReview: true`) that goes straight to the WhatsApp Agent. One model loop per burst of messages, no planner or review cost.
 - Lead scoring is deterministic code (`packages/shared/src/lead-scoring.ts`), never model-generated; keyword signal detection covers English, Roman Urdu and Urdu script.
 
+### As built (Milestone 6): Student + Course
+- `course.catalog` (read) gives active courses and open batches with today's price (early-bird aware), dates, schedule and seats. It is granted to Sales, WhatsApp, Content, Marketing, Student and Course agents; draft courses are invisible to agents.
+- Student Agent tools: `student.search`, `student.get` (attendance, assignments, verified vs pending payments, balance, certificate checks), `student.message` (external → approval, one pending per student), `certificate.request` (external → approval).
+- Progress and eligibility are computed in code (`packages/database/src/education.ts`, `packages/shared/src/education.ts`), never by the model.
+
 Specialists today: all eight exist with prompts in `agents/<id>/prompt.md` + `agents/_shared.md`. Until their data/tools arrive (CRM M5, students M6, web M8, analytics M12) each carries a `limitations` note that the planner sees and the agent must respect. For example, the Research Agent returns every time-sensitive claim as unverified because it has no web access yet.
 
 Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, real model). CI tests check the guard-rails (schema, dependencies, failure handling) with scripted mocks.
