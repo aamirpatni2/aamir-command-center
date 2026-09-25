@@ -7,8 +7,8 @@ Each milestone runs: implement → test → inspect errors → fix → re-test �
 | 0 | Environment audit + architecture | docs/*, repo skeleton, CLAUDE.md, .claude skills/agents | docs reviewed | ✅ done |
 | 1 | Repository + database + authentication | pnpm monorepo, config package, full DB schema + migration, Fastify API with sessions, RBAC, CSRF, rate limit, helmet, audit log, owner bootstrap, tests | `pnpm typecheck && pnpm test` green against real Postgres | ✅ done |
 | 2 | Dashboard shell | Vite/React/Tailwind dark UI, login page, sidebar nav (TODAY/EDUCATION/CONTENT/INTELLIGENCE/SYSTEM), dashboard widgets using live API counts | login → dashboard works in browser; screenshot | ✅ done |
-| 3 | Agent runtime | `ModelProvider` (Anthropic + Mock), `ToolRegistry` with risk policy, `AgentRunner` loop, run/step/message persistence, BullMQ worker, SSE run stream | agent test with MockProvider; real Claude smoke test when key present | ⏭ next |
-| 4 | Orchestrator | classify → plan → delegate → verify → summarise, task API, Agent Activity screen | routing tests for 8 agent domains | |
+| 3 | Agent runtime | `ModelProvider` (Anthropic + Mock), `ToolRegistry` with risk policy, `AgentRunner` loop, run/step/message persistence, BullMQ worker, SSE run stream | agent test with MockProvider; real Claude smoke test when key present | ✅ done (real-Claude smoke test pending the API key) |
+| 4 | Orchestrator | classify → plan → delegate → verify → summarise with `agent_steps`; first specialist agents; plan view in task detail | routing tests for 8 agent domains | ⏭ next |
 | 5 | Sales Agent + Leads | leads/contacts API + UI, documented scoring rules, duplicate handling, WhatsApp webhook (signature, replay) + WhatsApp Agent drafting | duplicate lead/message + webhook replay tests | |
 | 6 | Student Agent + Courses | courses/batches/students/enrollments/classes/assignments/payments API + UI | enrollment + certificate rules tests | |
 | 7 | Content Agent | content items, Urdu/English generation, calendar view, Reels/scripts/prompts | output schema tests, language rules | |
@@ -26,6 +26,7 @@ Each milestone runs: implement → test → inspect errors → fix → re-test �
 - **M2**: react, react-dom, react-router, vite, @vitejs/plugin-react, tailwindcss, @tanstack/react-query, lucide-react.
 - **M3**: @anthropic-ai/sdk, bullmq, ioredis.
 - **M8**: embedding provider (decision at M8), @modelcontextprotocol/sdk.
+- **M3 (as built)**: Tasks API + Tasks/Task detail/Agents screens pulled forward from M4 so the runtime is usable end-to-end; BullMQ pinned to v5 with ioredis 5.
 - **M2 (added)**: @playwright/test for the e2e smoke test (pulled forward from M14).
 
 ## Credentials needed (by milestone) — the build stops at these boundaries

@@ -55,5 +55,20 @@ Each decision lists the alternatives and why the simplest production-ready optio
 - **Alternatives**: Plain request rate limit per IP + email (the first implementation).
 - **Why**: Counting successful logins let the owner lock themselves out by signing in normally (the e2e run caught this). Only failures count now, and success resets the counter. A looser per-IP request cap stays against credential spraying.
 
+## ADR-016 — Own the agent loop instead of the SDK tool runner
+- **Alternatives**: Anthropic SDK tool runner; LangChain/agent frameworks.
+- **Why**: Every step must be persisted, risky calls turned into approvals, cancellation checked between steps, and the loop has to stay provider-neutral (ADR-008). The loop is about 250 lines and fully tested with scripted mock responses.
+
+## ADR-017 — Default model `claude-opus-5` with server-side refusal fallback
+- **Decision**: `DEFAULT_MODEL=claude-opus-5`; requests send `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) so a safety-declined request is re-run on Anthropic's recommended model instead of failing; a final refusal still ends the run as `MODEL_REFUSAL`. Per-agent `model` and `effort` can override (e.g. lower effort for simple specialists).
+- **Why**: Best quality for an operator-facing system; cost is controlled per agent through `effort` and visible per run (tokens + estimated cost).
+
+## ADR-018 — No automatic job retries for agent tasks
+- **Why**: A retried run could repeat side effects. Approval creation is idempotent anyway, but task re-runs are a deliberate human action.
+
+## ADR-019 — Mock model is a labelled development tool, not a fallback
+- **Decision**: The mock is used only when `ACC_ENABLE_MOCKS=true`, no real key is set, and `NODE_ENV` isn't production. Its text starts with `[MOCK]`, runs are stored with `model_provider='mock'`, and the UI shows a Mock badge everywhere.
+- **Why**: The project rule forbids fake integrations. This lets the whole pipeline (queue, tools, database, approvals, logs, UI) be built and tested before the API key exists, without anything being mistaken for real output.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

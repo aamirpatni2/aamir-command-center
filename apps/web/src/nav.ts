@@ -55,8 +55,8 @@ export const NAV: NavSection[] = [
     title: "Intelligence",
     items: [
       { path: "/research", label: "AI Research", icon: Telescope, milestone: 8, permission: "knowledge:read", description: "Source-backed AI research from the Research Agent" },
-      { path: "/agents", label: "Agents", icon: Bot, milestone: 4, permission: "tasks:read", description: "Agent activity: runs, tools used, duration, results and errors" },
-      { path: "/tasks", label: "Tasks", icon: ListChecks, milestone: 4, permission: "tasks:read", description: "Give the Orchestrator a task and follow its plan" },
+      { path: "/agents", label: "Agents", icon: Bot, milestone: 3, ready: true, permission: "tasks:read", description: "Agent activity: runs, tools used, duration, results and errors" },
+      { path: "/tasks", label: "Tasks", icon: ListChecks, milestone: 3, ready: true, permission: "tasks:read", description: "Give the Orchestrator a task and follow its plan" },
       { path: "/knowledge", label: "Knowledge", icon: Brain, milestone: 8, permission: "knowledge:read", description: "Approved business knowledge used by agents (RAG)" },
       { path: "/mcp", label: "MCP Tools", icon: Plug, milestone: 11, permission: "mcp:read", description: "Connected MCP servers, tools and permissions" },
     ],

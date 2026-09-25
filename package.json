@@ -18,7 +18,8 @@
     "db:create-owner": "pnpm --filter @acc/database create-owner",
     "dev:web": "pnpm --filter @acc/web dev",
     "build:web": "pnpm --filter @acc/web build",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "dev:worker": "pnpm --filter @acc/worker dev"
   },
   "devDependencies": {
     "@playwright/test": "~1.56.1",

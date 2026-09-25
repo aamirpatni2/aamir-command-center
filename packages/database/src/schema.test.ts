@@ -8,7 +8,7 @@ let h: DbHandle;
 beforeAll(async () => {
   h = createDb(await resetTestDatabase(), { max: 2 });
 });
-afterAll(async () => h.close());
+afterAll(async () => h?.close());
 
 const pgCode = (e: unknown) => (e as { cause?: { code?: string } }).cause?.code ?? (e as { code?: string }).code;
 

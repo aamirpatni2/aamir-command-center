@@ -124,7 +124,7 @@ export function DashboardPage() {
             </ul>
           ) : (
             <EmptyState icon={<Activity className="size-6" />} title="No agent runs yet">
-              The agent runtime arrives in Milestone 3. Runs will show up here live.
+              Give the Orchestrator a task on the <Link to="/tasks" className="text-accent hover:underline">Tasks</Link> page and its runs appear here.
             </EmptyState>
           )}
         </Card>

@@ -35,7 +35,7 @@ export const envSchema = z
 
     ANTHROPIC_API_KEY: optionalString,
     DEFAULT_MODEL_PROVIDER: z.enum(["anthropic", "openai", "google"]).default("anthropic"),
-    DEFAULT_MODEL: z.string().default("claude-sonnet-5"),
+    DEFAULT_MODEL: z.string().default("claude-opus-5"),
     OPENAI_API_KEY: optionalString,
     GOOGLE_AI_API_KEY: optionalString,
 

@@ -7,7 +7,7 @@ interface AgentDefinition {
   id: AgentId;                     // "sales" | "content" | ...
   description: string;             // used by the Orchestrator for routing
   systemPrompt: string;            // loaded from /agents/<id>/prompt.md
-  model: ModelSelector;            // { provider: "anthropic", model: "claude-sonnet-5" }
+  model: ModelSelector;            // { provider: "anthropic", model: "claude-opus-5" } (default)
   tools: ToolName[];               // allow-list enforced by ToolRegistry
   maxSteps: number;                // hard cap on tool-use iterations
   outputSchema?: ZodSchema;        // structured result validation
@@ -28,6 +28,15 @@ interface ModelProvider {
 - **AgentRunner** runs the tool-use loop: model call → validate tool calls → ToolRegistry → feed results back → repeat until `end_turn` or `maxSteps`. It records every step in `agent_runs` / `agent_messages`.
 - **ToolRegistry** is the single gate. It checks the allow-list, validates input and applies the risk policy, which can create an approval instead of running the tool.
 - **ModelProvider** adapters: `AnthropicProvider` (first), `OpenAIProvider` and `GoogleProvider` (later), and `MockProvider` (tests only, scripted responses).
+
+### As built (Milestone 3)
+- `packages/agents/src/model/` — `ModelProvider` interface; `AnthropicProvider` (Messages API, `claude-opus-5` default, adaptive thinking as the model default, `effort` per agent, server-side refusal fallback `fallbacks: "default"`, thinking blocks replayed unchanged inside the tool loop, tool names `a.b` ↔ `a__b`); `MockProvider` (dev/test only, every output labelled `[MOCK]`, runs stored with `model_provider = 'mock'`); `resolveModel()` refuses mocks in production.
+- `packages/agents/src/tools/registry.ts` — allow-list → Zod input validation → risk policy → timeout (30 s default) → audit. `external/destructive/financial` tools create an `approvals` row (idempotency key `runId:toolCallId`) and are **never executed** by the runner. Denied calls write `tool.denied` audit rows.
+- `packages/agents/src/runtime/runner.ts` — the loop. Persists every message to `agent_messages`, publishes `run.*` events, stops on refusal (`MODEL_REFUSAL`), output limit (`MAX_TOKENS`), `maxSteps` (`MAX_STEPS`) or cancellation (`CANCELLED`); provider errors map to stable codes (`PROVIDER_AUTH`, `PROVIDER_RATE_LIMIT`, …) without leaking credentials. Structured results use an automatic `finish` tool validated against the agent's `outputSchema` (one retry on invalid output).
+- `packages/agents/src/runtime/execute-task.ts` — claims a `QUEUED` task atomically (duplicate jobs are no-ops), runs the Orchestrator, and never overwrites a cancellation that happened mid-run.
+- `apps/worker` — BullMQ consumer (concurrency 2, **no automatic retries** so side effects can't repeat), publishes events on Redis pub/sub; a crash marks the task `FAILED` rather than leaving it `RUNNING`.
+- Internal tools so far: `kb.search` (approved knowledge only; keyword search until vectors land in M8) and `memory.propose` (stores `proposed` memory only).
+- In M3 the Orchestrator answers directly with those tools; delegation to specialists is Milestone 4.
 
 ## 2. Orchestrator
 

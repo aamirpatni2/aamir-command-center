@@ -7,6 +7,9 @@ import { DashboardPage } from "./pages/DashboardPage.js";
 import { LogsPage } from "./pages/LogsPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { ComingSoonPage } from "./pages/ComingSoonPage.js";
+import { TasksPage } from "./pages/TasksPage.js";
+import { TaskDetailPage } from "./pages/TaskDetailPage.js";
+import { AgentsPage } from "./pages/AgentsPage.js";
 import { ALL_NAV_ITEMS } from "./nav.js";
 import type { Permission } from "@acc/shared";
 
@@ -32,6 +35,8 @@ const READY: Record<string, ReactNode> = {
   "/": <DashboardPage />,
   "/logs": <LogsPage />,
   "/settings": <SettingsPage />,
+  "/tasks": <TasksPage />,
+  "/agents": <AgentsPage />,
 };
 
 export function App() {
@@ -52,6 +57,7 @@ export function App() {
             element={<Guard permission={item.permission}>{READY[item.path] ?? <ComingSoonPage item={item} />}</Guard>}
           />
         ))}
+        <Route path="/tasks/:id" element={<Guard permission="tasks:read"><TaskDetailPage /></Guard>} />
         <Route path="*" element={<PageHeader title="Page not found" description="That page doesn't exist." />} />
       </Route>
     </Routes>

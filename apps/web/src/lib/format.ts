@@ -26,3 +26,15 @@ export function timeAgo(iso: string, now = Date.now()): string {
   if (h < 24) return `${h}h ago`;
   return `${Math.round(h / 24)}d ago`;
 }
+
+export function formatDuration(ms: number | null | undefined): string {
+  if (ms == null) return "—";
+  if (ms < 1000) return `${ms} ms`;
+  const s = ms / 1000;
+  return s < 60 ? `${s.toFixed(1)} s` : `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
+}
+
+export function formatUsd(micro: number | null | undefined): string {
+  if (micro == null) return "—";
+  return `$${(micro / 1_000_000).toFixed(micro < 10_000 ? 4 : 2)}`;
+}

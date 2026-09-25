@@ -3,11 +3,23 @@ import { envSchema } from "@acc/config";
 import { createDb, hashPassword, schema, type DbHandle } from "@acc/database";
 import { resetTestDatabase } from "@acc/database/testing";
 import type { Role } from "@acc/shared";
+import type { TaskQueue } from "@acc/agents";
 import { buildApp } from "../app.js";
+
+export class MemoryQueue implements TaskQueue {
+  readonly jobs: string[] = [];
+  fail = false;
+  async enqueue(taskId: string) {
+    if (this.fail) throw new Error("redis down");
+    this.jobs.push(taskId);
+  }
+  async close() {}
+}
 
 export interface TestContext {
   app: FastifyInstance;
   handle: DbHandle;
+  queue: MemoryQueue;
 }
 
 export async function setupTestApp(
@@ -16,6 +28,7 @@ export async function setupTestApp(
     loginFailures: { max: 1_000, windowMs: 60_000 },
     loginIp: { max: 1_000, timeWindow: "1 minute" },
   },
+  envOverrides: Record<string, string> = {},
 ): Promise<TestContext> {
   const url = await resetTestDatabase();
   const env = envSchema.parse({
@@ -24,11 +37,13 @@ export async function setupTestApp(
     SESSION_SECRET: "test-session-secret-0123456789abcdef",
     ACC_ENCRYPTION_KEY: "test-encryption-key-0123456789abcdef",
     LOG_LEVEL: "silent",
+    ...envOverrides,
   });
+  const queue = new MemoryQueue();
   const handle = createDb(url, { max: 5 });
-  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit });
+  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue });
   await app.ready();
-  return { app, handle };
+  return { app, handle, queue };
 }
 
 export async function teardown(ctx: TestContext) {

@@ -6,7 +6,7 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 ## Commands
 - `pnpm install` · `pnpm typecheck` · `pnpm test` (needs Postgres; test DB `acc_test`)
 - `pnpm db:generate` (after schema edits) · `pnpm db:migrate` · `pnpm db:create-owner`
-- `pnpm dev:api` → http://localhost:4000 · `pnpm dev:web` → http://localhost:5173 · local services: `docker compose up -d`
+- `pnpm dev:api` → http://localhost:4000 · `pnpm dev:worker` (agent tasks) · `pnpm dev:web` → http://localhost:5173 · local services: `docker compose up -d`
 - `pnpm e2e` (Playwright; needs API + web running and `E2E_EMAIL`/`E2E_PASSWORD`)
 
 ## Layout
@@ -23,6 +23,11 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 - Schema changes: edit `packages/database/src/schema/*`, run `pnpm db:generate`, commit the SQL. Never edit applied migrations.
 - Record significant design choices in `docs/DECISIONS.md`.
 - Every milestone ends with: tests green, docs updated, report COMPLETED / TESTED / ISSUES / NEXT.
+
+## Agents
+Runtime in `packages/agents` (model providers, ToolRegistry, AgentRunner, executeTask). Prompts in `agents/<id>/prompt.md`.
+New tool = `Tool` with a Zod input + risk level, registered in `createDefaultToolRegistry()`, granted per agent by name.
+Default model `claude-opus-5` (see docs/DECISIONS.md ADR-017); tests use `MockProvider` scripts, never the network.
 
 ## Style
 ESM, strict TS, `.js` import suffixes, small modules, comments only where the reason is non-obvious.

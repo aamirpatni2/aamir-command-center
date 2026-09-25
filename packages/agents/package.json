@@ -1,0 +1,22 @@
+{
+  "name": "@acc/agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@acc/config": "workspace:*",
+    "@acc/database": "workspace:*",
+    "@acc/shared": "workspace:*",
+    "@anthropic-ai/sdk": "^0.128.0",
+    "bullmq": "^5.81.5",
+    "ioredis": "^5.11.1",
+    "pino": "^10.0.0",
+    "zod": "^4.1.0"
+  }
+}

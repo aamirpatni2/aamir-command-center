@@ -13,6 +13,9 @@ import { authRoutes } from "./routes/auth.js";
 import { userRoutes } from "./routes/users.js";
 import { auditRoutes } from "./routes/audit.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
+import { taskRoutes } from "./routes/tasks.js";
+import { TaskEventHub } from "./lib/task-events.js";
+import { createTaskQueue, type TaskQueue } from "@acc/agents";
 
 export interface BuildAppOptions {
   env: Env;
@@ -24,6 +27,8 @@ export interface BuildAppOptions {
     loginIp?: { max: number; timeWindow: string };
   };
   logger?: boolean;
+  /** Defaults to the BullMQ queue on REDIS_URL. Tests inject an in-memory queue. */
+  taskQueue?: TaskQueue;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -95,6 +100,13 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(userRoutes, { db });
   await app.register(auditRoutes, { db });
   await app.register(dashboardRoutes, { db });
+
+  const queue = opts.taskQueue ?? createTaskQueue(env.REDIS_URL);
+  const hub = new TaskEventHub(env.REDIS_URL);
+  app.addHook("onClose", async () => {
+    await Promise.allSettled([queue.close(), hub.close()]);
+  });
+  await app.register(taskRoutes, { db, env, queue, hub });
 
   return app;
 }

@@ -4,7 +4,7 @@ A personal multi-agent **AI Business Operating System** for running an AI educat
 students and courses, content, research, marketing, analytics and automations. An Orchestrator Agent sends work
 to specialist agents, and a human approves anything that leaves the system.
 
-> Status: **Milestone 2 complete** (repository, database, authentication, dashboard shell). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+> Status: **Milestone 3 complete** (repository, database, auth, dashboard, agent runtime + worker). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Quick start (local)
 
@@ -12,11 +12,13 @@ Requirements: Node 22+, pnpm 10+, and either Docker or local PostgreSQL 16 with 
 
 ```bash
 pnpm install
-cp .env.example .env            # then set SESSION_SECRET and ACC_ENCRYPTION_KEY (see comments in the file)
+cp .env.example .env            # set SESSION_SECRET, ACC_ENCRYPTION_KEY and ANTHROPIC_API_KEY
+                                # (no key yet? ACC_ENABLE_MOCKS=true runs a labelled mock model in dev)
 docker compose up -d            # Postgres (pgvector) + Redis
 pnpm db:migrate
 OWNER_EMAIL=you@example.com OWNER_NAME="Aamir" OWNER_PASSWORD='a-long-passphrase' pnpm db:create-owner
 pnpm dev:api                    # http://localhost:4000/api/health
+pnpm dev:worker                 # executes agent tasks from the Redis queue
 pnpm dev:web                    # http://localhost:5173 — sign in with the owner account
 pnpm test                       # needs the acc_test database (created by docker compose)
 E2E_EMAIL=... E2E_PASSWORD=... pnpm e2e   # browser smoke test (API + web must be running)
