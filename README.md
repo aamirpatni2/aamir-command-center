@@ -1,0 +1,27 @@
+# Aamir AI Command Center
+
+A personal multi-agent **AI Business Operating System** for running an AI education business: leads, WhatsApp,
+students and courses, content, research, marketing, analytics and automations. An Orchestrator Agent sends work
+to specialist agents, and a human approves anything that leaves the system.
+
+> Status: **Milestone 1 complete** (repository, database, authentication). See [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+
+## Quick start (local)
+
+Requirements: Node 22+, pnpm 10+, and either Docker or local PostgreSQL 16 with pgvector.
+
+```bash
+pnpm install
+cp .env.example .env            # then set SESSION_SECRET and ACC_ENCRYPTION_KEY (see comments in the file)
+docker compose up -d            # Postgres (pgvector) + Redis
+pnpm db:migrate
+OWNER_EMAIL=you@example.com OWNER_NAME="Aamir" OWNER_PASSWORD='a-long-passphrase' pnpm db:create-owner
+pnpm dev:api                    # http://localhost:4000/api/health
+pnpm test                       # needs the acc_test database (created by docker compose)
+```
+
+## Docs
+- [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
+- [Security model](docs/SECURITY_MODEL.md) · [Agent architecture](docs/AGENT_ARCHITECTURE.md)
+- [MCP architecture](docs/MCP_ARCHITECTURE.md) · [MCP servers](docs/MCP_SERVERS.md)
+- [Database design](docs/DATABASE_DESIGN.md) · [API](docs/API.md)
