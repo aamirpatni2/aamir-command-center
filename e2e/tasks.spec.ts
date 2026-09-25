@@ -12,8 +12,8 @@ test("run a task end-to-end and see it in Agent Activity", async ({ page }, info
   await expect(page).toHaveURL(/\/tasks\/[0-9a-f-]{36}$/);
   await expect(page.getByText("Completed").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Plan", exact: true })).toBeVisible();
-  await expect(page.getByText("research agent", { exact: true })).toBeVisible();
-  await expect(page.getByText("content agent", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Research agent", { exact: true })).toBeVisible();
+  await expect(page.getByText("Content agent", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Step 2 · content agent")).toBeVisible();
   await expect(page.getByText("Review · orchestrator")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Result" })).toBeVisible();

@@ -8,6 +8,7 @@ import { useAuth } from "../lib/auth.js";
 import { formatDateTime, formatDuration, formatUsd } from "../lib/format.js";
 import type { TaskDetail, TimelineMessage } from "../lib/types.js";
 import { PageHeader } from "../components/Layout.js";
+import { AgentChip } from "../components/AgentChip.js";
 
 const OPEN = new Set(["QUEUED", "RUNNING", "WAITING_APPROVAL"]);
 
@@ -42,7 +43,7 @@ function PlanView({ detail }: { detail: TaskDetail }) {
                 <span className="grid size-6 shrink-0 place-items-center rounded-full bg-surface-2 text-xs font-medium text-ink-2">{i + 1}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium text-ink capitalize">{s.agent} agent</span>
+                    <AgentChip id={s.agent} className="text-sm font-medium" />
                     {row && <StatusBadge status={row.status} />}
                     {s.dependsOn.length > 0 && <span className="text-xs text-ink-3">uses step {s.dependsOn.join(", ")}</span>}
                   </div>

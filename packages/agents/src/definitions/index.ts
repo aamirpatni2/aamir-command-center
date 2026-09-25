@@ -53,7 +53,7 @@ export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
   }),
   whatsapp: specialist("whatsapp", "Reads WhatsApp conversations, classifies intent, flags hot leads, drafts replies (sent only after approval), updates the lead and schedules follow-ups.", {
     tools: ["kb.search", "course.catalog", "conversation.read", "crm.lead.update", "whatsapp.send"],
-    limitations: "Approved replies are actually sent once the Approval Center executes actions (Milestone 9) and WhatsApp credentials are configured.",
+    limitations: "Approved replies are sent only when WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are configured, and only within 24 hours of the customer's last message (templates arrive with Milestone 11).",
   }),
   content: specialist("content", "Creates and saves content drafts: topic ideas, hooks, YouTube scripts, Facebook Reel scripts, captions, posts, carousels, AI image/video prompts and repurposing plans (Roman Urdu, Urdu, English), in Aamir's voice.", {
     effort: "high",
@@ -66,7 +66,7 @@ export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
   }),
   student: specialist("student", "Student records: enrolment, attendance, assignments, payments and balances, recordings, reminders, certificate eligibility, support.", {
     tools: ["kb.search", "course.catalog", "student.search", "student.get", "student.message", "certificate.request"],
-    limitations: "Messages and certificate requests go to approval; they are executed once the Approval Center runs actions (Milestone 9).",
+    limitations: "Messages and certificate requests go to approval. Approved messages need WhatsApp credentials and only reach students who wrote in the last 24 hours (templates arrive with Milestone 11).",
   }),
   marketing: specialist("marketing", "Campaign analysis, ad copy, hooks, creative ideas, audience hypotheses, performance summaries.", {
     tools: ["kb.search", "course.catalog"],

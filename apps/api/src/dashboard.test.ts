@@ -25,6 +25,13 @@ describe("GET /api/dashboard/summary", () => {
     expect(Object.values(body.counts).every((v) => v === 0)).toBe(true);
     expect(body.revenueThisMonth).toEqual({ amountMinor: 0, currency: "PKR" });
     expect(body.recentRuns).toEqual([]);
+    // Charts: a full 14-day axis of zeros, never sample data.
+    expect(body.charts.activity).toHaveLength(14);
+    expect(body.charts.activity.every((d: { leads: number; inbound: number; runs: number }) => d.leads + d.inbound + d.runs === 0)).toBe(true);
+    expect(body.charts.activity.at(-1).day).toBe(new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Karachi" }).format(new Date()));
+    expect(body.charts.leadBands).toEqual({ hot: 0, warm: 0, cold: 0 });
+    expect(body.charts.leadSources).toEqual([]);
+    expect(Object.values(body.charts.approvals30d).every((v) => v === 0)).toBe(true);
   });
 
   it("counts real records: leads, follow-ups, students, verified revenue only, approvals, tasks", async () => {
@@ -32,8 +39,17 @@ describe("GET /api/dashboard/summary", () => {
     const [c1] = await db.insert(schema.contacts).values({ phone: "+923000000001" }).returning();
     const [c2] = await db.insert(schema.contacts).values({ phone: "+923000000002" }).returning();
     const [c3] = await db.insert(schema.contacts).values({ phone: "+923000000003" }).returning();
-    await db.insert(schema.leads).values({ contactId: c1!.id, nextFollowUpAt: new Date(Date.now() - 3600_000) });
+    await db.insert(schema.leads).values({ contactId: c1!.id, score: 72, source: "whatsapp", nextFollowUpAt: new Date(Date.now() - 3600_000) });
     await db.insert(schema.leads).values({ contactId: c2!.id, status: "won", nextFollowUpAt: new Date(Date.now() - 3600_000) });
+    const [c4] = await db.insert(schema.contacts).values({ phone: "+923000000004" }).returning();
+    // Created 3 days ago (Pakistan time): lands in an earlier bucket, not "today".
+    await db.insert(schema.leads).values({ contactId: c4!.id, score: 35, source: "facebook", createdAt: new Date(Date.now() - 3 * 86_400_000) });
+    const [conv] = await db.insert(schema.conversations).values({ contactId: c1!.id, channel: "whatsapp", externalThreadId: "dash-1" }).returning();
+    await db.insert(schema.messages).values([
+      { conversationId: conv!.id, direction: "inbound", body: "a", status: "received", sentBy: "contact", providerMessageId: "d1" },
+      { conversationId: conv!.id, direction: "inbound", body: "b", status: "received", sentBy: "contact", providerMessageId: "d2" },
+      { conversationId: conv!.id, direction: "outbound", body: "c", status: "sent", sentBy: "agent", providerMessageId: "d3" },
+    ]);
     await db.insert(schema.students).values({ contactId: c3!.id });
     await db.insert(schema.payments).values([
       { amountMinor: 500_000, method: "bank_transfer", status: "verified", reference: "r1", paidAt: new Date() },
@@ -55,5 +71,14 @@ describe("GET /api/dashboard/summary", () => {
     expect(body.pendingApprovalItems[0]).toMatchObject({ title: "Publish reel", risk: "external" });
     expect(body.openTasks[0]).toMatchObject({ title: "Draft reels", status: "WAITING_APPROVAL" });
     expect(body.recentRuns[0]).toMatchObject({ agentId: "content", status: "RUNNING" });
+
+    const days = body.charts.activity as { day: string; leads: number; inbound: number; runs: number }[];
+    expect(days.at(-1)).toMatchObject({ leads: 2, inbound: 2, runs: 1 });
+    expect(days.at(-4)!.leads).toBe(1);
+    expect(days.reduce((t, d) => t + d.leads, 0)).toBe(3);
+    // Open leads only (the won lead is excluded): one hot (72), one warm (35).
+    expect(body.charts.leadBands).toEqual({ hot: 1, warm: 1, cold: 0 });
+    expect(body.charts.leadSources).toEqual([{ source: "facebook", count: 1 }, { source: "whatsapp", count: 1 }]);
+    expect(body.charts.approvals30d.pending).toBe(1);
   });
 });

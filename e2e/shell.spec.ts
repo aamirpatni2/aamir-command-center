@@ -20,7 +20,7 @@ test("login → dashboard → navigation → logs → logout", async ({ page, is
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
   await expect(page.getByText("Revenue this month")).toBeVisible();
-  await expect(page.getByText("Pending approvals").first()).toBeVisible();
+  await expect(page.getByText("Needs your approval").first()).toBeVisible();
   await page.screenshot({ path: `e2e/.results/dashboard-${info.project.name}.png`, fullPage: true });
 
   const openNav = async () => {

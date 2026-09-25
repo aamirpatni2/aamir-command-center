@@ -44,3 +44,7 @@ Urdu content: natural Pakistani Urdu; keep technical terms (AI, API, MCP) in Eng
 ## UI rules
 Dark theme tokens only (no raw hex in components). Status = icon + label, never colour alone.
 Never show placeholder numbers: unbuilt screens say "arrives in Milestone N", empty data shows an empty state.
+Design system (docs/DESIGN_SYSTEM.md): tokens in `apps/web/src/index.css`; surfaces use the `glass` utility (Card/StatTile);
+`brand` gradient only for primary actions; `viz-*` tones only for charts and identity chips (`AgentChip`, `lib/agents.ts`).
+Charts = `@acc/ui` AreaChart/DonutChart/BarList/Meter (SVG, real data only, legend + sr-only table). Motion must respect reduced-motion.
+`cn()` uses tailwind-merge, so a `className` override always wins.

@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
-import { Card, EmptyState, StatusBadge } from "@acc/ui";
+import { Card, cn, EmptyState, StatusBadge, TONE_CLASS } from "@acc/ui";
+import { AgentChip } from "../components/AgentChip.js";
+import { agentMeta } from "../lib/agents.js";
 import { api } from "../lib/api.js";
 import { formatDuration, formatUsd, timeAgo } from "../lib/format.js";
 import type { ActivityRun } from "../lib/types.js";
@@ -32,11 +34,12 @@ export function AgentsPage() {
 
       <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {info.data?.agents.map((a) => (
-          <Card key={a.id} title={<span className="capitalize">{a.id}</span>}>
+          <Card key={a.id} interactive className="overflow-hidden" title={<AgentChip id={a.id} suffix="" className="font-display text-[15px]" />}>
+            <div aria-hidden className={cn("pointer-events-none absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent to-transparent", TONE_CLASS[agentMeta(a.id).tone].edge)} />
             <p className="text-sm text-ink-2">{a.description}</p>
-            {a.limitations && <p className="mt-2 text-xs text-status-warning">Limited for now: {a.limitations}</p>}
+            {a.limitations && <p className="mt-3 rounded-xl border border-status-warning/20 bg-status-warning/5 px-3 py-2 text-xs leading-relaxed text-status-warning">Limited for now: {a.limitations}</p>}
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {a.tools.map((t) => <span key={t} className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-xs text-ink-2">{t}</span>)}
+              {a.tools.map((t) => <span key={t} className="rounded-md border border-line bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-ink-2">{t}</span>)}
             </div>
             <p className="mt-3 text-xs text-ink-3">{a.model} · effort {a.effort ?? "default"} · max {a.maxSteps} steps</p>
           </Card>
@@ -68,8 +71,8 @@ export function AgentsPage() {
               <tbody className="divide-y divide-line">
                 {runs.data.runs.map((r) => (
                   <tr key={r.id} className="align-top">
-                    <td className="px-4 py-2 whitespace-nowrap text-ink capitalize">
-                      {r.agentId}
+                    <td className="px-4 py-2 whitespace-nowrap text-ink">
+                      <AgentChip id={r.agentId} suffix="" />
                       {r.mock && <span className="ml-1.5 rounded bg-status-warning/15 px-1 text-[10px] text-status-warning">MOCK</span>}
                     </td>
                     <td className="max-w-56 px-4 py-2"><Link to={`/tasks/${r.taskId}`} className="line-clamp-2 text-accent hover:underline">{r.taskTitle}</Link></td>

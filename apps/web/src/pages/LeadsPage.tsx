@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Users } from "lucide-react";
-import { Button, Card, EmptyState, Field, StatusBadge } from "@acc/ui";
+import { Button, Card, EmptyState, Field, StatusBadge, Meter } from "@acc/ui";
 import { api, ApiError } from "../lib/api.js";
 import { useAuth } from "../lib/auth.js";
 import { formatDateTime, timeAgo } from "../lib/format.js";
@@ -122,9 +122,14 @@ export function LeadsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-2"><StatusBadge status={l.band} /></td>
-                    <td className="tabular px-4 py-2 text-ink">{l.score}</td>
+                    <td className="px-4 py-2">
+                      <span className="flex items-center gap-2.5">
+                        <span className="tabular w-6 font-semibold text-ink">{l.score}</span>
+                        <Meter value={l.score} label={`Score ${l.score} of 100`} tone={l.band === "hot" ? "rose" : l.band === "warm" ? "amber" : "sky"} />
+                      </span>
+                    </td>
                     <td className="px-4 py-2 text-ink-2 capitalize">{l.status}</td>
-                    <td className="px-4 py-2 text-ink-2">{l.source}</td>
+                    <td className="px-4 py-2 text-ink-2 capitalize">{l.source === "whatsapp" ? "WhatsApp" : l.source}</td>
                     <td className="px-4 py-2 whitespace-nowrap text-ink-2">{l.lastInboundAt ? timeAgo(l.lastInboundAt) : "—"}</td>
                     <td className={`px-4 py-2 whitespace-nowrap ${l.nextFollowUpAt && new Date(l.nextFollowUpAt) < new Date() ? "text-status-serious" : "text-ink-2"}`}>
                       {l.nextFollowUpAt ? formatDateTime(l.nextFollowUpAt) : "—"}

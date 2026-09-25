@@ -1,11 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { Bot, CheckSquare, GraduationCap, ListChecks, PhoneCall, Sparkles, Users, Wallet, Activity, RefreshCw } from "lucide-react";
-import { Card, EmptyState, StatTile, StatusBadge } from "@acc/ui";
+import {
+  Activity, ArrowUpRight, Bot, CheckSquare, Flame, GraduationCap, ListChecks, PhoneCall, RefreshCw, ShieldCheck, Users, Wallet, Waypoints,
+} from "lucide-react";
+import { AreaChart, BarList, Card, DonutChart, EmptyState, StatTile, StatusBadge, type VizTone } from "@acc/ui";
 import { api } from "../lib/api.js";
 import { formatCount, formatMoney, formatDateTime, timeAgo } from "../lib/format.js";
 import { PageHeader } from "../components/Layout.js";
+import { AgentChip } from "../components/AgentChip.js";
 import { useAuth } from "../lib/auth.js";
+
+type ApprovalStatusCount = Record<"pending" | "approved" | "executing" | "executed" | "rejected" | "expired" | "failed", number>;
 
 interface DashboardSummary {
   timezone: string;
@@ -23,12 +28,39 @@ interface DashboardSummary {
   recentRuns: { id: string; agentId: string; status: string; createdAt: string; latencyMs: number | null }[];
   pendingApprovalItems: { id: string; title: string; risk: string; createdAt: string }[];
   openTasks: { id: string; title: string; status: string; createdAt: string }[];
+  charts: {
+    activity: { day: string; leads: number; inbound: number; runs: number }[];
+    leadBands: { hot: number; warm: number; cold: number };
+    leadSources: { source: string; count: number }[];
+    approvals30d: ApprovalStatusCount;
+  };
 }
+
+const SOURCE_TONE: Record<string, VizTone> = { whatsapp: "emerald", facebook: "sky", instagram: "fuchsia", youtube: "rose", website: "cyan", referral: "amber" };
+const SOURCE_LABEL: Record<string, string> = { whatsapp: "WhatsApp", facebook: "Facebook", instagram: "Instagram", youtube: "YouTube", website: "Website", referral: "Referral" };
+const APPROVAL_BARS: { key: keyof ApprovalStatusCount; label: string; tone: VizTone }[] = [
+  { key: "executed", label: "Executed", tone: "emerald" },
+  { key: "pending", label: "Waiting for you", tone: "amber" },
+  { key: "approved", label: "Approved, not sent yet", tone: "cyan" },
+  { key: "rejected", label: "Rejected", tone: "rose" },
+  { key: "expired", label: "Expired / superseded", tone: "violet" },
+  { key: "failed", label: "Outcome unknown", tone: "fuchsia" },
+];
+
+const dayLabel = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
 
 function TileLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
-    <Link to={to} className="block rounded-xl focus-visible:outline-2 focus-visible:outline-accent [&>div]:hover:border-line-strong [&>div]:hover:bg-surface-2">
+    <Link to={to} className="group block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
       {children}
+    </Link>
+  );
+}
+
+function CardLink({ to, children }: { to: string; children: React.ReactNode }) {
+  return (
+    <Link to={to} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium whitespace-nowrap text-accent transition hover:bg-accent/10">
+      {children} <ArrowUpRight className="size-3.5" aria-hidden />
     </Link>
   );
 }
@@ -49,105 +81,197 @@ export function DashboardPage() {
   const d = q.data;
   const c = d?.counts;
   const tz = d?.timezone ?? "Asia/Karachi";
+  const loading = !d && q.isLoading;
   const v = (n: number | undefined) => (n === undefined ? "—" : formatCount(n));
+  const today = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(new Date());
+
+  const activity = d?.charts.activity ?? [];
+  const hasActivity = activity.some((a) => a.leads + a.inbound + a.runs > 0);
+  const bands = d?.charts.leadBands;
+  const bandTotal = bands ? bands.hot + bands.warm + bands.cold : 0;
+  const approvals = d?.charts.approvals30d;
+  const approvalTotal = approvals ? Object.values(approvals).reduce((t, n) => t + n, 0) : 0;
 
   return (
     <>
       <PageHeader
+        eyebrow={today}
         title={`${greeting(tz)}, ${session?.user.name.split(" ")[0] ?? ""}`}
-        description={d ? `Live figures · updated ${formatDateTime(d.generatedAt, tz)} (Pakistan time)` : "Loading today's figures…"}
+        description="Everything your agents did, and everything waiting for you, from live records."
         action={
-          <button
-            onClick={() => void q.refetch()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm text-ink-2 hover:bg-surface-2"
-          >
-            <RefreshCw className={q.isFetching ? "size-4 animate-spin" : "size-4"} aria-hidden /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {d && (
+              <span className="hidden items-center gap-2 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs text-ink-2 sm:inline-flex">
+                <span className="size-1.5 animate-pulse-dot rounded-full bg-status-good" aria-hidden />
+                Live · {formatDateTime(d.generatedAt, tz)}
+              </span>
+            )}
+            <button
+              onClick={() => void q.refetch()}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-sm text-ink-2 transition hover:border-line-strong hover:text-ink active:scale-[0.97]"
+            >
+              <RefreshCw className={q.isFetching ? "size-4 animate-spin" : "size-4"} aria-hidden /> Refresh
+            </button>
+          </div>
         }
       />
 
       {q.isError && (
-        <p role="alert" className="mb-4 rounded-lg border border-status-critical/40 bg-status-critical/10 px-3 py-2 text-sm text-status-critical">
+        <p role="alert" className="mb-5 rounded-xl border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-sm text-status-critical">
           Couldn't load the dashboard: {(q.error as Error).message}
         </p>
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <TileLink to="/analytics">
-          <StatTile hero label="Revenue this month" icon={<Wallet className="size-4" />}
+          <StatTile
+            hero
+            tone="emerald"
+            loading={loading}
+            label="Revenue this month"
+            icon={<Wallet className="size-4" />}
             value={d ? formatMoney(d.revenueThisMonth.amountMinor, d.revenueThisMonth.currency) : "—"}
-            note="Verified payments only" />
+            note={<span className="inline-flex items-center gap-1.5"><ShieldCheck className="size-3.5 text-status-good" aria-hidden /> Verified payments only</span>}
+          />
         </TileLink>
         <div className="grid grid-cols-2 gap-4 lg:col-span-2 lg:grid-cols-3">
-          <TileLink to="/tasks"><StatTile label="Today's tasks" icon={<ListChecks className="size-4" />} value={v(c?.tasksOpen)} note="Queued, running or waiting" /></TileLink>
-          <TileLink to="/leads"><StatTile label="New leads" icon={<Users className="size-4" />} value={v(c?.newLeadsToday)} note="Since midnight" /></TileLink>
-          <TileLink to="/leads"><StatTile label="Pending follow-ups" icon={<PhoneCall className="size-4" />} value={v(c?.pendingFollowUps)} note="Due today or overdue" /></TileLink>
-          <TileLink to="/students"><StatTile label="Students" icon={<GraduationCap className="size-4" />} value={v(c?.activeStudents)} note="Active" /></TileLink>
-          <TileLink to="/agents"><StatTile label="Active agents" icon={<Bot className="size-4" />} value={v(c?.activeAgents)} note={`${v(c?.agentRunsToday)} runs today`} /></TileLink>
-          <TileLink to="/approvals"><StatTile label="Pending approvals" icon={<CheckSquare className="size-4" />} value={v(c?.pendingApprovals)} note="Waiting for your decision" /></TileLink>
+          <TileLink to="/tasks"><StatTile tone="indigo" loading={loading} label="Open tasks" icon={<ListChecks className="size-4" />} value={v(c?.tasksOpen)} note="Queued, running or waiting" /></TileLink>
+          <TileLink to="/leads"><StatTile tone="cyan" loading={loading} label="New leads" icon={<Users className="size-4" />} value={v(c?.newLeadsToday)} note="Since midnight" /></TileLink>
+          <TileLink to="/leads"><StatTile tone="amber" loading={loading} label="Follow-ups due" icon={<PhoneCall className="size-4" />} value={v(c?.pendingFollowUps)} note="Today or overdue" /></TileLink>
+          <TileLink to="/students"><StatTile tone="violet" loading={loading} label="Students" icon={<GraduationCap className="size-4" />} value={v(c?.activeStudents)} note="Active" /></TileLink>
+          <TileLink to="/agents"><StatTile tone="sky" loading={loading} label="Agents working" icon={<Bot className="size-4" />} value={v(c?.activeAgents)} note={`${v(c?.agentRunsToday)} runs today`} /></TileLink>
+          <TileLink to="/approvals"><StatTile tone="rose" loading={loading} label="Approvals" icon={<CheckSquare className="size-4" />} value={v(c?.pendingApprovals)} note="Waiting for your decision" /></TileLink>
         </div>
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Card title="Pending approvals" action={<Link to="/approvals" className="text-xs text-accent hover:underline">Open Approval Center</Link>}>
-          {d?.pendingApprovalItems.length ? (
-            <ul className="divide-y divide-line">
-              {d.pendingApprovalItems.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                  <span className="truncate text-ink">{a.title}</span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <StatusBadge status={a.risk} />
-                    <span className="text-xs text-ink-3">{timeAgo(a.createdAt)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+        <Card title="Activity · last 14 days" icon={<Activity className="size-4" />} className="lg:col-span-2" action={<CardLink to="/agents">Agent activity</CardLink>}>
+          {loading ? (
+            <div className="shimmer h-[252px] rounded-xl" />
+          ) : hasActivity ? (
+            <AreaChart
+              label="Daily activity over the last 14 days"
+              data={activity}
+              xLabel={(a) => dayLabel(a.day)}
+              series={[
+                { key: "inbound", label: "WhatsApp messages in", tone: "cyan" },
+                { key: "leads", label: "New leads", tone: "emerald" },
+                { key: "runs", label: "Agent runs", tone: "indigo" },
+              ]}
+            />
           ) : (
-            <EmptyState icon={<CheckSquare className="size-6" />} title="Nothing waiting">
-              When an agent wants to send, publish or spend, it will appear here first.
+            <EmptyState icon={<Activity className="size-5" />} title="No activity in the last 14 days">
+              Messages, new leads and agent runs will be charted here day by day.
             </EmptyState>
           )}
         </Card>
 
-        <Card title="Agent runs" action={<Link to="/agents" className="text-xs text-accent hover:underline">Agent activity</Link>}>
+        <Card title="Lead temperature" icon={<Flame className="size-4" />} action={<CardLink to="/leads">Leads</CardLink>}>
+          {loading ? (
+            <div className="shimmer h-[252px] rounded-xl" />
+          ) : bands && bandTotal > 0 ? (
+            <DonutChart
+              label="Open leads by temperature"
+              centerLabel="open leads"
+              segments={[
+                { label: "Hot", value: bands.hot, tone: "rose" },
+                { label: "Warm", value: bands.warm, tone: "amber" },
+                { label: "Cold", value: bands.cold, tone: "sky" },
+              ]}
+            />
+          ) : (
+            <EmptyState icon={<Flame className="size-5" />} title="No open leads">Scored leads are grouped into hot, warm and cold here.</EmptyState>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <Card title="Needs your approval" icon={<CheckSquare className="size-4" />} action={<CardLink to="/approvals">Review</CardLink>}>
+          {d?.pendingApprovalItems.length ? (
+            <ul className="-mx-2 space-y-0.5">
+              {d.pendingApprovalItems.map((a) => (
+                <li key={a.id}>
+                  <Link to="/approvals" className="flex items-center justify-between gap-3 rounded-xl px-2 py-2 text-sm transition hover:bg-surface-2">
+                    <span className="truncate text-ink">{a.title}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <StatusBadge status={a.risk} />
+                      <span className="text-xs text-ink-3">{timeAgo(a.createdAt)}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState icon={<CheckSquare className="size-5" />} title="Nothing waiting">
+              When an agent wants to send, publish or spend, it appears here first.
+            </EmptyState>
+          )}
+        </Card>
+
+        <Card title="Latest agent runs" icon={<Bot className="size-4" />} action={<CardLink to="/agents">All runs</CardLink>}>
           {d?.recentRuns.length ? (
-            <ul className="divide-y divide-line">
+            <ul className="-mx-2 space-y-0.5">
               {d.recentRuns.map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                  <span className="text-ink capitalize">{r.agentId} agent</span>
-                  <span className="flex items-center gap-2">
+                <li key={r.id} className="flex items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-sm transition hover:bg-surface-2">
+                  <AgentChip id={r.agentId} suffix="" />
+                  <span className="flex shrink-0 items-center gap-2">
                     <StatusBadge status={r.status} />
-                    <span className="text-xs text-ink-3">{timeAgo(r.createdAt)}</span>
+                    <span className="w-14 text-right text-xs text-ink-3">{timeAgo(r.createdAt)}</span>
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <EmptyState icon={<Activity className="size-6" />} title="No agent runs yet">
+            <EmptyState icon={<Activity className="size-5" />} title="No agent runs yet">
               Give the Orchestrator a task on the <Link to="/tasks" className="text-accent hover:underline">Tasks</Link> page and its runs appear here.
             </EmptyState>
           )}
         </Card>
 
-        <Card title="AI insights">
-          <EmptyState icon={<Sparkles className="size-6" />} title="No insights yet">
-            The Analytics Agent (Milestone 12) will turn your real data into daily insights. Nothing is invented in the meantime.
-          </EmptyState>
+        <Card title="Lead sources" icon={<Waypoints className="size-4" />} action={<span className="text-xs text-ink-3">open leads</span>}>
+          {d?.charts.leadSources.length ? (
+            <BarList
+              label="Open leads by source"
+              items={d.charts.leadSources.map((s) => ({ key: s.source, label: SOURCE_LABEL[s.source] ?? s.source, value: s.count, tone: SOURCE_TONE[s.source] ?? "indigo" }))}
+            />
+          ) : (
+            <EmptyState icon={<Waypoints className="size-5" />} title="No open leads yet">Lead sources appear once enquiries arrive.</EmptyState>
+          )}
         </Card>
       </div>
 
-      {d && d.openTasks.length > 0 && (
-        <Card title="Open tasks" className="mt-4">
-          <ul className="divide-y divide-line">
-            {d.openTasks.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span className="truncate text-ink">{t.title}</span>
-                <StatusBadge status={t.status} />
-              </li>
-            ))}
-          </ul>
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <Card title="Open tasks" icon={<ListChecks className="size-4" />} className="lg:col-span-2" action={<CardLink to="/tasks">Tasks</CardLink>}>
+          {d?.openTasks.length ? (
+            <ul className="-mx-2 space-y-0.5">
+              {d.openTasks.map((t) => (
+                <li key={t.id}>
+                  <Link to={`/tasks/${t.id}`} className="flex items-center justify-between gap-3 rounded-xl px-2 py-2 text-sm transition hover:bg-surface-2">
+                    <span className="truncate text-ink">{t.title}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <StatusBadge status={t.status} />
+                      <span className="w-14 text-right text-xs text-ink-3">{timeAgo(t.createdAt)}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState icon={<ListChecks className="size-5" />} title="No open tasks">Everything the agents were asked to do is finished.</EmptyState>
+          )}
         </Card>
-      )}
+
+        <Card title="Approvals · last 30 days" icon={<ShieldCheck className="size-4" />}>
+          {approvals && approvalTotal > 0 ? (
+            <BarList
+              label="Approval outcomes in the last 30 days"
+              items={APPROVAL_BARS.filter((b) => approvals[b.key] > 0).map((b) => ({ key: b.key, label: b.label, value: approvals[b.key], tone: b.tone }))}
+            />
+          ) : (
+            <EmptyState icon={<ShieldCheck className="size-5" />} title="No requests yet">How your approval decisions turned out will show here.</EmptyState>
+          )}
+        </Card>
+      </div>
     </>
   );
 }

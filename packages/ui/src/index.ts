@@ -3,5 +3,7 @@ export { Card } from "./Card.js";
 export { StatTile } from "./StatTile.js";
 export { StatusBadge } from "./StatusBadge.js";
 export { Button } from "./Button.js";
-export { Field } from "./Field.js";
+export { Field, fieldClass } from "./Field.js";
 export { EmptyState } from "./EmptyState.js";
+export { AreaChart, BarList, DonutChart, Meter, type BarItem, type ChartSeries, type Segment } from "./charts.js";
+export { TONE_CLASS, TONE_VAR, type VizTone } from "./tones.js";

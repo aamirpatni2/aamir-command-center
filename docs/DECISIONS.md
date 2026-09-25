@@ -121,5 +121,10 @@ Each decision lists the alternatives and why the simplest production-ready optio
 - **Alternatives**: re-run the agent with the decision so it can continue.
 - **Why**: re-running costs tokens and could draft new messages without a new request. Recording each approval's outcome on the task keeps the history honest; follow-up work is started deliberately (by Aamir or an automation).
 
+## ADR-035 — Premium dark design system, self-hosted fonts, hand-built SVG charts
+- **Decision**: glass surfaces over a layered ambient background; Plus Jakarta Sans (display) + Inter (UI) + JetBrains Mono, self-hosted via Fontsource (Noto Nastaliq Urdu loads only when Urdu text appears); charts are small SVG components in `@acc/ui`.
+- **Alternatives**: Google Fonts CDN; Recharts / Chart.js / ECharts.
+- **Why**: self-hosting keeps the strict CSP and avoids third-party requests. Our charts are simple (area, donut, bars), so ~300 lines we control give exact styling, glow and motion, accessible names and sr-only tables, and no 100 KB+ dependency. A library can be added in M12 if analytics needs zoom or brushing.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

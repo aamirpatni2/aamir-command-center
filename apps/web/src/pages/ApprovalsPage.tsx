@@ -8,11 +8,12 @@ import { useAuth } from "../lib/auth.js";
 import { formatDateTime, timeAgo } from "../lib/format.js";
 import type { Approval, ApprovalList, DecisionResponse } from "../lib/approval-types.js";
 import { PageHeader } from "../components/Layout.js";
+import { AgentChip } from "../components/AgentChip.js";
+import { agentMeta } from "../lib/agents.js";
 
 const WINDOW_MS = 24 * 3600_000;
 const MESSAGE_TOOLS = new Set(["whatsapp.send", "student.message"]);
-const AGENT_LABEL: Record<string, string> = { whatsapp: "WhatsApp" };
-const agentLabel = (id: string | null) => (id ? (AGENT_LABEL[id] ?? id.charAt(0).toUpperCase() + id.slice(1)) : "System");
+const agentLabel = (id: string | null) => agentMeta(id).label;
 const TOOL_LABEL: Record<string, string> = {
   "whatsapp.send": "WhatsApp reply",
   "student.message": "Message to student",
@@ -103,7 +104,8 @@ function ApprovalCard({ a }: { a: Approval }) {
       <Card className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-xs text-ink-3">
+            <p className="flex items-center gap-2 text-xs text-ink-3">
+              <AgentChip id={a.agent} withLabel={false} className="[&>span]:size-6" />
               {agentLabel(a.agent)} agent · {timeAgo(a.createdAt)}
             </p>
             {/* Message drafts show the text below, so the heading names the action instead of repeating it. */}

@@ -1,11 +1,12 @@
 import { useId, type ReactNode, type SelectHTMLAttributes } from "react";
+import { fieldClass } from "@acc/ui";
 
 export function Select({ label, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { label: string; children: ReactNode }) {
   const id = useId();
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm text-ink-2">{label}</label>
-      <select id={id} className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink" {...props}>{children}</select>
+      <label htmlFor={id} className="block text-sm font-medium text-ink-2">{label}</label>
+      <select id={id} className={fieldClass} {...props}>{children}</select>
     </div>
   );
 }
