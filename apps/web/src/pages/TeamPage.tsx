@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, Copy, Crown, Eye, KeyRound, RefreshCw, ShieldCheck, UserPlus, UsersRound, Wrench } from "lucide-react";
+import { Check, ChevronRight, Copy, Crown, Eye, KeyRound, Pencil, RefreshCw, ShieldCheck, UserPlus, UsersRound, Wrench } from "lucide-react";
 import { Button, Card, cn, EmptyState, Field, StatusBadge } from "@acc/ui";
 import { ROLES, type Role } from "@acc/shared";
 import { api, ApiError } from "../lib/api.js";
@@ -111,9 +111,46 @@ function AddMember({ onAdded }: { onAdded: () => void }) {
   );
 }
 
+function EditDetails({ member, isYou, onSaved, onCancel }: { member: Member; isYou: boolean; onSaved: () => void; onCancel: () => void }) {
+  const { refresh } = useAuth();
+  const save = useMutation({
+    mutationFn: (body: { name?: string; email?: string }) => api(`/api/users/${member.id}`, { method: "PATCH", body }),
+    onSuccess: async () => {
+      if (isYou) await refresh(); // the sidebar shows your name
+      onSaved();
+    },
+  });
+
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const name = String(f.get("name")).trim();
+    const email = String(f.get("email")).trim().toLowerCase();
+    const body: { name?: string; email?: string } = {};
+    if (name !== member.name) body.name = name;
+    if (email !== member.email) body.email = email;
+    if (!body.name && !body.email) return onCancel();
+    if (body.email && !confirm(`${isYou ? "You" : member.name} will sign in with ${email} from now on (not ${member.email}). Continue?`)) return;
+    save.mutate(body);
+  }
+
+  return (
+    <form className="grid basis-full gap-2 sm:grid-cols-2" onSubmit={submit} aria-label={`Edit ${member.name}`}>
+      <Field label="Name" name="name" defaultValue={member.name} required maxLength={120} autoComplete="off" />
+      <Field label="Email" name="email" type="email" defaultValue={member.email} required maxLength={254} autoComplete="off" />
+      {save.isError && <p role="alert" className="text-sm text-status-critical sm:col-span-2">{errorText(save.error)}</p>}
+      <div className="flex gap-2 sm:col-span-2">
+        <Button type="submit" disabled={save.isPending}>Save</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
 function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; isYou: boolean; canManage: boolean; onChanged: () => void }) {
   const [reset, setReset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const update = useMutation({
     mutationFn: (body: { role?: Role; isActive?: boolean }) => api(`/api/users/${member.id}`, { method: "PATCH", body }),
     onSuccess: () => {
@@ -136,12 +173,24 @@ function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; is
   return (
     <li className={cn("space-y-3 px-5 py-3.5", !member.isActive && "opacity-70")} aria-label={member.name}>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="min-w-48 flex-1">
-          <p className="font-medium text-ink">
-            {member.name} {isYou && <span className="ml-1 rounded-full border border-line px-1.5 py-0.5 text-[11px] text-ink-3">You</span>}
-          </p>
-          <p className="text-sm text-ink-3">{member.email}</p>
-        </div>
+        {editing ? (
+          <EditDetails
+            member={member}
+            isYou={isYou}
+            onCancel={() => setEditing(false)}
+            onSaved={() => {
+              setEditing(false);
+              onChanged();
+            }}
+          />
+        ) : (
+          <div className="min-w-48 flex-1">
+            <p className="font-medium text-ink">
+              {member.name} {isYou && <span className="ml-1 rounded-full border border-line px-1.5 py-0.5 text-[11px] text-ink-3">You</span>}
+            </p>
+            <p className="text-sm text-ink-3">{member.email}</p>
+          </div>
+        )}
         <div className="w-40">
           {editable ? (
             <select
@@ -166,9 +215,12 @@ function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; is
         <p className="w-36 text-sm text-ink-3" title={member.lastLoginAt ? formatDateTime(member.lastLoginAt) : undefined}>
           {member.lastLoginAt ? `Signed in ${timeAgo(member.lastLoginAt)}` : "Never signed in"}
         </p>
-        {editable && (
+        {canManage && !editing && (
           <div className="flex gap-2">
-            {member.isActive && (
+            <Button variant="ghost" onClick={() => setEditing(true)}>
+              <Pencil className="size-4" aria-hidden /> Edit
+            </Button>
+            {editable && member.isActive && (
               <Button
                 variant="ghost"
                 disabled={resetPassword.isPending}
@@ -179,6 +231,7 @@ function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; is
                 <KeyRound className="size-4" aria-hidden /> Reset password
               </Button>
             )}
+            {editable && (
             <Button
               variant="secondary"
               disabled={update.isPending}
@@ -191,6 +244,7 @@ function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; is
             >
               {member.isActive ? "Deactivate" : "Reactivate"}
             </Button>
+            )}
           </div>
         )}
       </div>

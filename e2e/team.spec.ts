@@ -75,10 +75,45 @@ test("team page: add a member, reset their password, change role, deactivate", a
   await member.ctx.close();
 
   // Your own row can't be demoted or deactivated from here.
-  const me = page.getByRole("listitem").filter({ hasText: "You" });
+  const me = page.getByRole("list", { name: "Active members" }).getByRole("listitem").filter({ has: page.getByText("You", { exact: true }) });
+  await expect(me).toHaveCount(1);
   await expect(me.getByRole("button", { name: "Deactivate" })).toHaveCount(0);
 
+  // Edit name and email: a duplicate is refused; after saving they sign in with the new email.
+  const newName = `${name} Renamed`;
+  const newEmail = `renamed-${stamp}@example.test`;
+  await row.getByRole("button", { name: "Edit" }).click();
+  const form = row.getByRole("form", { name: `Edit ${name}` });
+  await form.getByLabel("Email").fill(process.env.E2E_EMAIL!);
+  await form.getByRole("button", { name: "Save" }).click();
+  await expect(form.getByRole("alert")).toContainText("already uses this email");
+  await form.getByLabel("Name").fill(newName);
+  await form.getByLabel("Email").fill(newEmail);
+  await form.getByRole("button", { name: "Save" }).click();
+  const renamed = page.getByRole("listitem", { name: newName });
+  await expect(renamed).toContainText(newEmail);
+  member = await signIn(browser, email, fresh);
+  await expect(member.page.getByRole("alert")).toBeVisible();
+  await member.ctx.close();
+  member = await signIn(browser, newEmail, fresh);
+  await expect(member.page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
+  await member.ctx.close();
+
+  // Editing your own name updates the sidebar at once (then change it back).
+  const ownName = (await me.getAttribute("aria-label"))!;
+  let mine = page.getByRole("listitem", { name: ownName, exact: true });
+  await mine.getByRole("button", { name: "Edit" }).click();
+  await mine.getByRole("form").getByLabel("Name").fill(`${ownName} Test`);
+  await mine.getByRole("form").getByRole("button", { name: "Save" }).click();
+  // The sidebar's account box (not the Team list) shows the new name without a reload.
+  await expect(page.getByRole("complementary").getByText(`${ownName} Test`, { exact: true })).toBeVisible();
+  mine = page.getByRole("listitem", { name: `${ownName} Test`, exact: true });
+  await mine.getByRole("button", { name: "Edit" }).click();
+  await mine.getByRole("form").getByLabel("Name").fill(ownName);
+  await mine.getByRole("form").getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("complementary").getByText(ownName, { exact: true })).toBeVisible();
+
   // Tidy up.
-  await row.getByRole("button", { name: "Deactivate" }).click();
-  await expect(row).toContainText("Deactivated");
+  await renamed.getByRole("button", { name: "Deactivate" }).click();
+  await expect(renamed).toContainText("Deactivated");
 });

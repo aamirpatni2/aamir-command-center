@@ -21,7 +21,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/auth/logout-all` | session | revoke all of the user's sessions → 204 |
 | GET | `/api/users` | `users:read` | list users |
 | POST | `/api/users` | `users:manage` | `{email, name, role, password(12+)}` → 201 |
-| PATCH | `/api/users/:id` | `users:manage` | `{name?, role?, isActive?}`; can't demote or deactivate the last owner or yourself; role/active changes revoke that user's sessions |
+| PATCH | `/api/users/:id` | `users:manage` | `{name?, email?, role?, isActive?}`; email is lower-cased and must be unused (deactivated accounts keep theirs) → 409 `CONFLICT`; you can edit your own name/email but not demote or deactivate yourself or the last owner; role/active changes revoke that user's sessions; audited with before/after |
 | POST | `/api/users/:id/password` | `users:manage` | `{password(12+)}` → `{ok}`: the owner sets a temporary password for a team member (not for yourself: use `/api/auth/password`); weak-password rules; signs them out everywhere; audited `user.password_reset` |
 | GET | `/api/audit-logs` | `audit:read` | `?limit&before&action&entityType` → `{auditLogs, nextBefore}` |
 | GET | `/api/agents` | `tasks:read` | defined agents (description, current limitations, tools, model, effort, max steps) + model availability `{available, mock, reason?}` |

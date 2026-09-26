@@ -9,6 +9,8 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   can: (p: Permission) => boolean;
+  /** Re-reads the signed-in user (e.g. after editing your own name or email). */
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       can: (p) => !!session?.permissions.includes(p),
+      refresh: async () => apply(await api<SessionResponse>("/api/auth/me")),
     }),
     [status, session, apply],
   );

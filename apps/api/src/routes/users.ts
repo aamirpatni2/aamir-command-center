@@ -19,6 +19,7 @@ const publicColumns = {
 const updateUserSchema = z
   .object({
     name: z.string().trim().min(1).max(120).optional(),
+    email: z.string().trim().toLowerCase().email().max(254).optional(),
     role: z.enum(ROLES).optional(),
     isActive: z.boolean().optional(),
   })
@@ -65,7 +66,22 @@ export async function userRoutes(app: FastifyInstance, opts: { db: Database }) {
       if ((owners?.n ?? 0) <= 1) throw forbidden("The last active owner cannot be demoted or deactivated");
     }
 
-    const [user] = await db.update(schema.users).set(body).where(eq(schema.users.id, id)).returning(publicColumns);
+    if (body.email && body.email !== target.email) {
+      // Deactivated accounts keep their email (their history stays attached), so they count too.
+      const [taken] = await db.select({ id: schema.users.id }).from(schema.users).where(and(eq(schema.users.email, body.email), activeUser));
+      if (taken && taken.id !== id) throw conflict("Another account already uses this email");
+    }
+
+    const [user] = await db
+      .update(schema.users)
+      .set(body)
+      .where(eq(schema.users.id, id))
+      .returning(publicColumns)
+      .catch((err: unknown) => {
+        // Two edits racing for the same address: the unique index decides.
+        if (String((err as { cause?: { code?: string } }).cause?.code ?? (err as { code?: string }).code) === "23505") throw conflict("Another account already uses this email");
+        throw err;
+      });
     if (body.isActive === false || (body.role && body.role !== target.role)) {
       await app.sessions.revokeAllForUser(id); // permissions changed → force re-login
     }
@@ -74,7 +90,7 @@ export async function userRoutes(app: FastifyInstance, opts: { db: Database }) {
       action: "user.update",
       entityType: "user",
       entityId: id,
-      metadata: { before: { role: target.role, isActive: target.isActive }, after: body },
+      metadata: { before: { name: target.name, email: target.email, role: target.role, isActive: target.isActive }, after: body },
     });
     return { user };
   });
