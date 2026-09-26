@@ -6,6 +6,7 @@ import { HttpError, parse, unauthorized } from "../lib/errors.js";
 import { requireAuth } from "../plugins/auth.js";
 import { auditMeta } from "../lib/audit.js";
 import { LoginThrottle } from "../lib/login-throttle.js";
+import type { WindowStore } from "../lib/window-store.js";
 
 export interface AuthRouteOptions {
   db: Database;
@@ -13,11 +14,12 @@ export interface AuthRouteOptions {
   loginFailures: { max: number; windowMs: number };
   /** Coarse cap on all login requests per IP (stops spraying many emails). */
   loginIpRateLimit: { max: number; timeWindow: string };
+  limits: WindowStore;
 }
 
 export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
   const { db } = opts;
-  const throttle = new LoginThrottle(opts.loginFailures.max, opts.loginFailures.windowMs);
+  const throttle = new LoginThrottle(opts.limits, opts.loginFailures.max, opts.loginFailures.windowMs);
 
   app.post(
     "/api/auth/login",
@@ -26,7 +28,7 @@ export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
     },
     async (req, reply) => {
       const body = parse(loginRequestSchema, req.body);
-      const wait = throttle.retryAfter(req.ip, body.email);
+      const wait = await throttle.retryAfter(req.ip, body.email);
       if (wait > 0) {
         reply.header("retry-after", String(wait));
         throw new HttpError(429, "RATE_LIMITED", "Too many failed attempts. Try again later.");
@@ -39,7 +41,7 @@ export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
 
       const ok = user ? await verifyPassword(user.passwordHash, body.password) : (await burnPasswordCheck(body.password), false);
       if (!user || !ok || !user.isActive) {
-        throttle.recordFailure(req.ip, body.email);
+        await throttle.recordFailure(req.ip, body.email);
         await writeAudit(db, {
           ...auditMeta(req),
           actorType: "system",
@@ -51,7 +53,7 @@ export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
         throw new HttpError(401, "INVALID_CREDENTIALS", "Invalid email or password");
       }
 
-      throttle.reset(req.ip, body.email);
+      await throttle.reset(req.ip, body.email);
       const session = await app.sessions.create(user.id, { ip: req.ip, userAgent: req.headers["user-agent"] });
       await db.update(schema.users).set({ lastLoginAt: new Date() }).where(eq(schema.users.id, user.id));
       await writeAudit(db, {

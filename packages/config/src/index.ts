@@ -25,11 +25,25 @@ export const envSchema = z
       .transform((v) => v.split(",").map((s) => s.trim()).filter(Boolean)),
 
     DATABASE_URL: z.string().url(),
+    /** Owner connection for migrations (production). Defaults to DATABASE_URL. */
+    MIGRATION_DATABASE_URL: optionalString.pipe(z.string().url().optional()),
+    /** Least-privilege role the app connects as; created/updated by `pnpm db:migrate` when APP_DB_PASSWORD is set. */
+    APP_DB_ROLE: z.string().regex(/^[a-z_][a-z0-9_]{0,62}$/).default("acc_app"),
+    APP_DB_PASSWORD: optionalString.pipe(z.string().min(16).optional()),
+    /** Escape hatch for the production check that the app doesn't run as the database owner. */
+    ACC_ALLOW_OWNER_DB: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
     TEST_DATABASE_URL: optionalString,
     REDIS_URL: z.string().url().default("redis://localhost:6379"),
 
     SESSION_SECRET: z.string().min(16),
     ACC_ENCRYPTION_KEY: z.string().min(16),
+    /** API requests per minute per signed-in user (or per IP when signed out). */
+    RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(300),
+    /** Login attempts per IP per 15 minutes (on top of 5 failures per IP + email). */
+    LOGIN_IP_LIMIT: z.coerce.number().int().positive().default(30),
     SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
     SESSION_ABSOLUTE_TTL_DAYS: z.coerce.number().int().positive().default(30),
 
@@ -62,6 +76,8 @@ export const envSchema = z
     /** Read by mcp.config.json (${env:GITHUB_TOKEN}); fine-grained, read-only. */
     GITHUB_TOKEN: optionalString,
     MCP_CONFIG: optionalString,
+    /** Production: serve the built dashboard (apps/web/dist) from the API, same origin. */
+    WEB_DIST_DIR: optionalString,
 
     /** Meta Marketing API, read-only (ads_read): campaign results on the Ads page. */
     META_ADS_ACCESS_TOKEN: optionalString,

@@ -106,6 +106,7 @@ jobs:
           rand() { node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"; }
           sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(rand)|; s|^ACC_ENCRYPTION_KEY=.*|ACC_ENCRYPTION_KEY=$(rand)|" .env
           sed -i "s|^ACC_ENABLE_MOCKS=.*|ACC_ENABLE_MOCKS=true|; s|^WHATSAPP_APP_SECRET=.*|WHATSAPP_APP_SECRET=dev-local-secret|; s|^WHATSAPP_TRIAGE_DELAY_SECONDS=.*|WHATSAPP_TRIAGE_DELAY_SECONDS=3|" .env
+          sed -i "s|^RATE_LIMIT_PER_MINUTE=.*|RATE_LIMIT_PER_MINUTE=5000|; s|^LOGIN_IP_LIMIT=.*|LOGIN_IP_LIMIT=1000|" .env
           mkdir -p data/uploads data/exports
       - name: Migrate and create the owner account
         run: |

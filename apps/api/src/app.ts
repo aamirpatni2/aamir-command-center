@@ -8,6 +8,7 @@ import type { Env } from "@acc/config";
 import type { Database } from "@acc/database";
 import { HttpError } from "./lib/errors.js";
 import { AgentRunLimiter } from "./lib/rate-limits.js";
+import { RedisWindowStore, type WindowStore } from "./lib/window-store.js";
 import { authPlugin } from "./plugins/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
@@ -24,6 +25,7 @@ import { approvalRoutes } from "./routes/approvals.js";
 import { automationRoutes } from "./routes/automations.js";
 import { integrationRoutes } from "./routes/integrations.js";
 import { analyticsRoutes } from "./routes/analytics.js";
+import { registerWeb } from "./routes/web.js";
 import { TaskEventHub } from "./lib/task-events.js";
 import {
   createAutomationQueue, createTaskQueue, MetaAdsClient, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, WhatsAppClient,
@@ -41,6 +43,8 @@ export interface BuildAppOptions {
     /** Requests that start agent runs, per user (cost control). */
     agentRuns?: { max: number; windowMs: number };
   };
+  /** Throttle counters. Defaults to Redis (REDIS_URL) so limits survive restarts; tests use memory. */
+  limits?: WindowStore;
   logger?: boolean;
   /** Defaults to the BullMQ queue on REDIS_URL. Tests inject an in-memory queue. */
   taskQueue?: TaskQueue;
@@ -92,9 +96,18 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
   await app.register(cors, { origin: env.WEB_ORIGINS, credentials: true });
   await app.register(cookie);
+  const limits = opts.limits ?? new RedisWindowStore(env.REDIS_URL);
+  app.addHook("onClose", async () => {
+    await limits.close();
+  });
   await app.register(rateLimit, {
-    ...(opts.rateLimit?.global ?? { max: 300, timeWindow: "1 minute" }),
+    ...(opts.rateLimit?.global ?? { max: env.RATE_LIMIT_PER_MINUTE, timeWindow: "1 minute" }),
     hook: "preHandler", // so per-route key generators can read the parsed body
+    // Per signed-in user (a team behind one office IP shouldn't share a budget), else per IP.
+    // req.ip is undefined once the client has hung up (aborted fetches on navigation).
+    keyGenerator: (req) => (req.auth ? `user:${req.auth.user.id}` : `ip:${req.ip ?? "disconnected"}`),
+    // Shared counters in Redis; if Redis is briefly unreachable, don't lock everyone out.
+    ...(limits instanceof RedisWindowStore ? { redis: limits.redis, nameSpace: "acc:rl:", skipOnError: true } : {}),
   });
   await app.register(authPlugin, {
     db,
@@ -117,7 +130,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     return reply.code(500).send({ error: { code: "INTERNAL", message: "Something went wrong", requestId: req.id } });
   });
 
-  app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: { code: "NOT_FOUND", message: "Route not found" } }));
+  // Production: the API also serves the built dashboard from the same origin (WEB_DIST_DIR).
+  const webFallback = env.WEB_DIST_DIR ? await registerWeb(app, env.WEB_DIST_DIR) : null;
+  app.setNotFoundHandler((req, reply) => webFallback?.(req, reply) ?? reply.code(404).send({ error: { code: "NOT_FOUND", message: "Route not found" } }));
 
   // Every registered route, for the security sweep test (auth / CSRF / RBAC on all endpoints).
   const routeTable: { method: string; url: string }[] = [];
@@ -127,13 +142,14 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
 
   const runs = opts.rateLimit?.agentRuns ?? { max: 60, windowMs: 3600_000 };
-  app.decorate("agentRuns", new AgentRunLimiter(runs.max, runs.windowMs));
+  app.decorate("agentRuns", new AgentRunLimiter(limits, runs.max, runs.windowMs));
 
   await app.register(healthRoutes, { db });
   await app.register(authRoutes, {
     db,
     loginFailures: opts.rateLimit?.loginFailures ?? { max: 5, windowMs: 15 * 60_000 },
-    loginIpRateLimit: opts.rateLimit?.loginIp ?? { max: 30, timeWindow: "15 minutes" },
+    loginIpRateLimit: opts.rateLimit?.loginIp ?? { max: env.LOGIN_IP_LIMIT, timeWindow: "15 minutes" },
+    limits,
   });
   await app.register(userRoutes, { db });
   await app.register(auditRoutes, { db });

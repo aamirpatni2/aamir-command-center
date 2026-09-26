@@ -6,7 +6,7 @@ import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import pino from "pino";
 import { loadEnv } from "@acc/config";
-import { createDb } from "@acc/database";
+import { createDb, leastPrivilegeProblem } from "@acc/database";
 import {
   AUTOMATION_QUEUE, MetaAdsClient, createAutomationQueue, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, createDefaultToolRegistry,
   createTaskQueue, embedderFromEnv, modelAvailability, RedisEventSink, resolveModel, TASK_QUEUE, webSearchFromEnv, type AutomationJob, type EngineDeps,
@@ -21,6 +21,13 @@ const logger = pino({
 });
 
 const handle = createDb(env.DATABASE_URL, { max: 5 });
+if (env.NODE_ENV === "production" && !env.ACC_ALLOW_OWNER_DB) {
+  const problem = await leastPrivilegeProblem(handle.db);
+  if (problem) {
+    logger.fatal(`Refusing to start: ${problem}. Point DATABASE_URL at the app role (see docs/DEPLOYMENT.md) or set ACC_ALLOW_OWNER_DB=true.`);
+    process.exit(1);
+  }
+}
 const publisher = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const events = new RedisEventSink(publisher);
 const webSearch = webSearchFromEnv(env);

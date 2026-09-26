@@ -5,6 +5,7 @@ import { resetTestDatabase } from "@acc/database/testing";
 import type { Role } from "@acc/shared";
 import { McpClientManager, type AutomationQueue, type TaskQueue } from "@acc/agents";
 import { buildApp } from "../app.js";
+import { MemoryWindowStore } from "../lib/window-store.js";
 
 export class MemoryQueue implements TaskQueue {
   readonly jobs: string[] = [];
@@ -72,7 +73,7 @@ export async function setupTestApp(
   const automations = new MemoryAutomationQueue();
   // No MCP servers in API tests unless a test injects its own manager.
   const mcp = extra.mcp ?? new McpClientManager({ servers: [] }, { root: process.cwd() });
-  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue, automationQueue: automations, ...extra, mcp });
+  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, limits: new MemoryWindowStore(), taskQueue: queue, automationQueue: automations, ...extra, mcp });
   await app.ready();
   return { app, handle, queue, automations };
 }

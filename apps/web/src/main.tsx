@@ -1,3 +1,5 @@
+// Must be the first import: turns off Zod's eval probe before any schema module loads (CSP).
+import "@acc/shared/zod-csp";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";

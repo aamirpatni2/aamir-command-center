@@ -28,6 +28,8 @@ if [ "$(psql_admin "select 1 from pg_roles where rolname='acc'")" != "1" ]; then
   log "creating database role"
   psql_admin "create role acc with login password 'acc_dev_password' createdb"
 fi
+# CREATEROLE: tests create the least-privilege app role (acc_app_test).
+psql_admin "alter role acc createrole"
 for db in acc_dev acc_test; do
   if [ "$(psql_admin "select 1 from pg_database where datname='$db'")" != "1" ]; then
     log "creating database $db"
@@ -49,6 +51,7 @@ if [ ! -f .env ]; then
   rand() { node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"; }
   sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(rand)|; s|^ACC_ENCRYPTION_KEY=.*|ACC_ENCRYPTION_KEY=$(rand)|" .env
   sed -i "s|^ACC_ENABLE_MOCKS=.*|ACC_ENABLE_MOCKS=true|; s|^WHATSAPP_APP_SECRET=.*|WHATSAPP_APP_SECRET=dev-local-secret|; s|^WHATSAPP_TRIAGE_DELAY_SECONDS=.*|WHATSAPP_TRIAGE_DELAY_SECONDS=3|" .env
+  sed -i "s|^RATE_LIMIT_PER_MINUTE=.*|RATE_LIMIT_PER_MINUTE=5000|; s|^LOGIN_IP_LIMIT=.*|LOGIN_IP_LIMIT=1000|" .env
 fi
 
 # 5. Apply database migrations to the dev database.
