@@ -1,6 +1,6 @@
 # Architecture — Aamir AI Command Center
 
-Version 1.0 · Status: Milestone 1 implemented
+Version 1.0 · Status: Milestone 15 implemented
 
 ## 1. What this system is
 
@@ -95,7 +95,7 @@ working on this repository. They are deliberately separate.
 4. Agents call tools through the `ToolRegistry`. The registry checks the agent's permission and the tool's risk level:
    - `read` / `draft` tools run straight away.
    - `external` / `destructive` / `financial` tools **do not run**. They create an `approvals` row and the task moves to `WAITING_APPROVAL`.
-5. The operator approves, rejects or edits in the Approval Center. On approval the worker runs the stored action exactly once (idempotency key) and writes an audit log.
+5. The operator approves, rejects or edits in the Approval Center. On approval the API claims the action (`approved → executing`) and runs it exactly once through its executor, records the outcome and writes audit logs. When none of a task's approvals is open any more, the task moves from `WAITING_APPROVAL` to `COMPLETED` with the outcomes in its result.
 6. The final result is stored on the task and streamed to the UI over Server-Sent Events.
 
 ## 6. Cross-cutting concerns
@@ -106,10 +106,18 @@ working on this repository. They are deliberately separate.
 - **Data**: see DATABASE_DESIGN.md.
 - **Observability**: every request carries a `requestId`. Every agent run records model, latency, token usage, tool calls, errors and approval state. Logs are pino JSON and ship to stdout (collected by the host).
 
-## 7. Deployment target (Milestone 15)
+## 7. Deployment (Milestone 15)
 
-- API + worker: one container image, two process types (Railway / Render / Fly / VPS).
-- Web: static build served by the API or a CDN (Vercel/Netlify).
-- Postgres: managed service with pgvector (Neon, Supabase or RDS).
-- Redis: managed (Upstash / Railway).
-- Secrets: the host platform's secret store; never in git.
+One Docker image (`Dockerfile`) runs as the API (which also serves the built dashboard, same origin, strict CSP), the worker, and the migration job. `deploy/docker-compose.yml` runs the whole stack on one server:
+
+```
+Internet ──HTTPS──▶ Caddy (automatic Let's Encrypt) ──▶ API :4000 (+ dashboard)
+                                                        │
+                           worker ◀── Redis (queue, rate limits) ──┘
+                              └──────▶ Postgres 16 + pgvector ◀── nightly pg_dump → deploy/backups
+```
+
+- Only Caddy is reachable from outside; Postgres and Redis stay on the private Docker network.
+- `migrate` runs first on every start (as the owner) and re-grants the least-privilege `acc_app` role the app connects as.
+- Secrets: `deploy/.env` (stack: database passwords, domain) and `deploy/app.env` (the app's keys); neither is in git, and the app never sees the database owner password.
+- Managed alternatives (Neon/Supabase Postgres with pgvector, Upstash Redis, Railway/Render/Fly for the image) work with the same image; see docs/DEPLOYMENT.md.

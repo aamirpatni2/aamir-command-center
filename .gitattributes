@@ -1,0 +1,9 @@
+# Shell scripts and container config must keep Unix line endings, even when cloned on Windows
+# (Git for Windows converts to CRLF by default, which breaks bash: "$'\r': command not found").
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+# Windows batch files need CRLF line endings (labels and goto can misbehave with LF).
+*.bat text eol=crlf
+*.cmd text eol=crlf

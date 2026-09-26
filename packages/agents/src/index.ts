@@ -1,0 +1,91 @@
+export * from "./model/types.js";
+export { AnthropicProvider } from "./model/anthropic.js";
+export { MockProvider, type MockStep } from "./model/mock.js";
+export { resolveModel, modelAvailability, type ResolvedModel } from "./model/registry.js";
+export { estimateCostMicroUsd } from "./model/pricing.js";
+export { ToolRegistry } from "./tools/registry.js";
+export type { Tool, ToolContext, ToolOutcome } from "./tools/types.js";
+export { INTERNAL_TOOLS, kbSearch, memoryPropose } from "./tools/internal.js";
+export { AGENTS, SPECIALISTS, orchestrator, orchestratorReview, type AgentDefinition } from "./definitions/index.js";
+export { orchestrate, agentCatalogue, type OrchestrationResult, type StepOutcome } from "./orchestration/orchestrate.js";
+export { planSchema, stepResultSchema, synthesisSchema, MAX_PLAN_STEPS, type Plan, type StepResult, type Synthesis } from "./orchestration/schemas.js";
+export { AgentRunner, type RunParams, type RunResult } from "./runtime/runner.js";
+export { executeTask, type ExecuteTaskDeps } from "./runtime/execute-task.js";
+export * from "./runtime/events.js";
+
+import { ToolRegistry } from "./tools/registry.js";
+import { INTERNAL_TOOLS } from "./tools/internal.js";
+import { CRM_TOOLS } from "./tools/crm.js";
+import { EDUCATION_TOOLS } from "./tools/education.js";
+import { CONTENT_TOOLS } from "./tools/content.js";
+import { makeKbSearch, makeWebFetch, makeWebSearch, researchSave } from "./tools/research.js";
+import { memoryPropose } from "./tools/internal.js";
+import type { Embedder } from "@acc/database";
+import type { WebSearchProvider } from "./integrations/web/search.js";
+import type { Resolver } from "./integrations/web/fetch.js";
+
+import { makeWorkspaceTools } from "./tools/workspace.js";
+import { makeAnalyticsTools } from "./tools/analytics.js";
+import type { MetaAdsClient } from "./integrations/meta/ads.js";
+import type { OAuthService } from "./integrations/oauth/service.js";
+import type { McpClientManager } from "./mcp/manager.js";
+
+export interface ToolRegistryOptions {
+  /** Read-only Meta ads data for ads.insights. */
+  ads?: MetaAdsClient | null;
+  /** Google / Canva tools use it; without it they report not_connected. */
+  oauth?: OAuthService | null;
+  /** Allow-listed MCP tools are registered and granted per agent (mcp.config.json). */
+  mcp?: McpClientManager | null;
+  webSearch?: WebSearchProvider | null;
+  embedder?: Embedder | null;
+  /** For tests: fake network and DNS for web.fetch. */
+  fetchImpl?: typeof fetch;
+  resolve?: Resolver;
+}
+
+/** Registry with every production tool registered. Integrations that aren't configured report not_configured. */
+export function createDefaultToolRegistry(opts: ToolRegistryOptions = {}): ToolRegistry {
+  const registry = new ToolRegistry().register(
+    makeKbSearch(opts.embedder ?? null),
+    memoryPropose,
+    ...CRM_TOOLS,
+    ...EDUCATION_TOOLS,
+    ...CONTENT_TOOLS,
+    makeWebSearch(opts.webSearch ?? null),
+    makeWebFetch({ enabled: !!opts.webSearch, fetchImpl: opts.fetchImpl, resolve: opts.resolve }),
+    researchSave,
+    ...makeWorkspaceTools(opts.oauth ?? null),
+    ...makeAnalyticsTools(opts.ads ?? null),
+  );
+  if (opts.mcp) {
+    registry.register(...opts.mcp.tools());
+    for (const [agent, names] of opts.mcp.grants()) registry.grant(agent, names);
+  }
+  return registry;
+}
+export { makeKbSearch, makeWebFetch, makeWebSearch, researchSave } from "./tools/research.js";
+export * from "./integrations/web/search.js";
+export * from "./integrations/web/fetch.js";
+export * from "./integrations/embeddings/voyage.js";
+export { CRM_TOOLS } from "./tools/crm.js";
+export { EDUCATION_TOOLS } from "./tools/education.js";
+export { CONTENT_TOOLS } from "./tools/content.js";
+export * from "./integrations/whatsapp/payload.js";
+export * from "./integrations/whatsapp/client.js";
+export {
+  createTaskQueue, createAutomationQueue, automationJobId, RedisEventSink, TASK_QUEUE, TRIAGE_JOB, AUTOMATION_QUEUE, SWEEP_EVERY_MS, Redis,
+  type TaskQueue, type AutomationQueue, type AutomationJob,
+} from "./runtime/queue.js";
+export { createWhatsappTriageTask } from "./runtime/triage.js";
+export { isPresetPlan, type PresetPlan } from "./orchestration/orchestrate.js";
+export * from "./approvals/executors.js";
+export * from "./approvals/service.js";
+export * from "./automations/engine.js";
+export * from "./mcp/config.js";
+export * from "./mcp/manager.js";
+export * from "./integrations/oauth/service.js";
+export * from "./integrations/whatsapp/templates.js";
+export { makeWorkspaceTools, buildMime } from "./tools/workspace.js";
+export * from "./integrations/meta/ads.js";
+export { makeAnalyticsTools } from "./tools/analytics.js";

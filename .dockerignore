@@ -1,0 +1,19 @@
+# Keep the build context small and secrets out of the image.
+**/node_modules
+**/dist
+.git
+.github
+.claude
+.env
+.env.*
+!.env.example
+deploy/.env
+deploy/backups
+coverage
+data
+logs
+e2e/.results
+e2e/.auth
+playwright-report
+docs/screenshots
+*.log

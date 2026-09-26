@@ -36,10 +36,11 @@ export const automationRules = pgTable("automation_rules", {
   conditions: jsonb("conditions").$type<Record<string, unknown>[]>().notNull().default([]),
   steps: jsonb("steps").$type<Record<string, unknown>[]>().notNull().default([]),
   /** Owner-defined auto-approval scope. Empty = every risky action needs approval. */
-  policy: jsonb("policy").$type<{ autoApprove?: { tool: string; templateIds?: string[] }[] }>().notNull().default({}),
+  policy: jsonb("policy").$type<{ maxRunsPerHour?: number; autoApprove?: { tool: string; templateIds?: string[] }[] }>().notNull().default({}),
   enabled: boolean("enabled").notNull().default(false),
   createdBy: uuid("created_by").references(() => users.id),
   lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  runCount: integer("run_count").notNull().default(0),
   ...timestamps,
   ...softDelete,
 });
@@ -152,9 +153,12 @@ export const approvals = pgTable(
     decisionNote: text("decision_note"),
     /** Guarantees an approved action executes at most once. */
     idempotencyKey: text("idempotency_key").notNull(),
+    /** Set when an automation (not an agent) asked for this action. */
+    automationRunId: uuid("automation_run_id").references((): AnyPgColumn => automationRuns.id),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     executedAt: timestamp("executed_at", { withTimezone: true }),
     executionResult: jsonb("execution_result").$type<Record<string, unknown>>(),
+    executionAttempts: integer("execution_attempts").notNull().default(0),
     ...timestamps,
   },
   (t) => [
@@ -179,4 +183,27 @@ export const memoryItems = pgTable(
     ...timestamps,
   },
   (t) => [index("memory_items_kind_status_idx").on(t.kind, t.status), index("memory_items_subject_idx").on(t.subject)],
+);
+
+/**
+ * One row per rule firing (conditions matched, or a dry run is not stored). The unique
+ * (rule_id, dedupe_key) makes each event fire a rule at most once, even if delivered twice.
+ */
+export const automationRuns = pgTable(
+  "automation_runs",
+  {
+    id: id(),
+    ruleId: uuid("rule_id").notNull().references(() => automationRules.id),
+    event: text("event").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    /** completed | partial | failed | rate_limited */
+    status: text("status").notNull(),
+    /** Small snapshot of the triggering context (ids, band, …); no message bodies. */
+    context: jsonb("context").$type<Record<string, unknown>>().notNull().default({}),
+    actions: jsonb("actions").$type<Record<string, unknown>[]>().notNull().default([]),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("automation_runs_dedupe_unique").on(t.ruleId, t.dedupeKey), index("automation_runs_rule_idx").on(t.ruleId, t.createdAt)],
 );

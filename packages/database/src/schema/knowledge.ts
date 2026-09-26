@@ -3,7 +3,8 @@ import { id, softDelete, timestamps } from "./common.js";
 import { contentLanguage, knowledgeCategory, knowledgeStatus } from "./enums.js";
 import { users } from "./identity.js";
 
-export const EMBEDDING_DIMENSIONS = 1536;
+/** Voyage AI embeddings (voyage-3.5) at 1024 dimensions. */
+export const EMBEDDING_DIMENSIONS = 1024;
 
 export const knowledgeDocuments = pgTable(
   "knowledge_documents",
@@ -37,5 +38,28 @@ export const knowledgeChunks = pgTable(
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     ...timestamps,
   },
-  (t) => [uniqueIndex("knowledge_chunks_doc_index_unique").on(t.documentId, t.chunkIndex)],
+  (t) => [
+    uniqueIndex("knowledge_chunks_doc_index_unique").on(t.documentId, t.chunkIndex),
+    index("knowledge_chunks_embedding_hnsw").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
+);
+
+/** Research output: each claim with its verification status and the sources actually consulted. */
+export const researchReports = pgTable(
+  "research_reports",
+  {
+    id: id(),
+    taskId: uuid("task_id"),
+    runId: uuid("run_id"),
+    title: text("title").notNull(),
+    summary: text("summary").notNull(),
+    claims: jsonb("claims")
+      .$type<{ claim: string; status: "verified" | "unverified" | "contradicted"; sources: { url: string; title?: string }[]; note?: string }[]>()
+      .notNull()
+      .default([]),
+    teachingNotes: text("teaching_notes"),
+    ...timestamps,
+    ...softDelete,
+  },
+  (t) => [index("research_reports_created_idx").on(t.createdAt)],
 );

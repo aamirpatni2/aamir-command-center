@@ -1,6 +1,14 @@
 export * from "./client.js";
 export * from "./migrate.js";
+export * from "./app-role.js";
 export * from "./passwords.js";
 export * from "./audit.js";
 export * as schema from "./schema/index.js";
-export { sql, eq, and, or, isNull, desc, asc, gt, lt, inArray, count } from "drizzle-orm";
+export { sql, eq, ne, and, or, isNull, isNotNull, desc, asc, gt, gte, lt, lte, inArray, notInArray, count, ilike } from "drizzle-orm";
+export * from "./crm.js";
+export * from "./education.js";
+export * from "./content.js";
+export * from "./knowledge.js";
+export * from "./secrets.js";
+export * from "./analytics.js";
+export * from "./today.js";

@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev:api": "pnpm --filter @acc/api dev",
     "typecheck": "pnpm -r --parallel typecheck",
@@ -13,12 +15,33 @@
     "db:generate": "pnpm --filter @acc/database generate",
     "db:migrate": "pnpm --filter @acc/database migrate",
     "db:seed": "pnpm --filter @acc/database seed",
-    "db:create-owner": "pnpm --filter @acc/database create-owner"
+    "db:create-owner": "pnpm --filter @acc/database create-owner",
+    "dev:web": "pnpm --filter @acc/web dev",
+    "build:web": "pnpm --filter @acc/web build",
+    "e2e": "playwright test",
+    "dev:worker": "pnpm --filter @acc/worker dev",
+    "eval:routing": "pnpm --filter @acc/agents eval:routing",
+    "whatsapp:simulate": "pnpm --filter @acc/api whatsapp:simulate",
+    "lint": "pnpm typecheck",
+    "security:secrets": "node scripts/secret-scan.mjs",
+    "security:audit": "pnpm audit --audit-level=moderate",
+    "security": "pnpm security:secrets && pnpm security:audit",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@playwright/test": "~1.56.1",
     "@types/node": "^22.10.0",
-    "tsx": "^4.20.0",
+    "@vitest/coverage-v8": "4.1.11",
     "typescript": "~5.9.0",
     "vitest": "^4.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server-filesystem": "2026.8.31",
+    "tsx": "^4.20.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+    }
   }
 }

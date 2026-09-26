@@ -27,10 +27,54 @@
 | Agent → MCP server | Per-server least-privilege token; server allow-list; tool allow-list per server |
 | Any content from outside (web pages, WhatsApp messages, MCP results) | Treated as **data, never instructions** (prompt-injection defence); cannot raise an agent's permissions |
 
+## 2a. WhatsApp webhook (as built, M5)
+- Signature: HMAC-SHA256 of the **raw** bytes (`X-Hub-Signature-256`) with `WHATSAPP_APP_SECRET`, constant-time compare; the route has its own raw-body parser (256 KB limit).
+- Replay: `webhook_events` unique on `(provider, sha256(body))`: an identical delivery is acknowledged as `duplicate` and not processed. A delivery that failed mid-processing is marked `failed` so Meta's retry can reprocess it.
+- Duplicate messages: unique `messages.provider_message_id` + `ON CONFLICT DO NOTHING`, so counters and scores never double-count.
+- Customer text is data: tools label it as such, the WhatsApp Agent prompt says so, and it can't change agent permissions (tested with an injection string).
+- Sending: every reply is an approval; the 24-hour customer-service window is surfaced (`canReplyFreeForm`) so the agent doesn't draft free-form replies that WhatsApp would reject.
+
+## 2b. Approval Center (as built, M9)
+- Deciding needs `approvals:decide` (owner/admin); `financial` risk needs `approvals:decide_financial` (owner only). Operators and viewers can read only. Checked in the API on every decision, edit and retry.
+- Exactly once: approve = `UPDATE … WHERE status='pending'`; execution claim = `UPDATE … SET status='executing' WHERE status='approved'`. Concurrent clicks: one wins, the rest get 409 (tested with 6 parallel requests).
+- Edits: only the tool's `editableFields` (message `text`), validated with the tool's own schema; the recipient/target can't be changed. The agent's original payload is kept next to the edited one.
+- Preconditions are checked at execution time (24h WhatsApp window, contact phone, certificate rules), not only when the agent asked.
+- Outcomes: *not executed* (nothing left the system: not configured, outside window, 4xx from Meta) can be retried; *unknown* (network error, timeout, 5xx) becomes `failed` and is never retried automatically, because a retry could send twice.
+- Nothing is faked: tools without an executor are recorded as `NO_EXECUTOR`; missing WhatsApp credentials are reported as `NOT_CONFIGURED` with the variable names.
+- Audit: `approval.requested / superseded / edit / approve / executed / not_executed / execution_failed / reject / expired`, plus `task.completed` when a waiting task settles. Message text is not copied into audit metadata.
+- Cancelling a task expires its pending requests. Pending requests expire after 7 days.
+
+## 2c. Automations (as built, M10)
+- Only the owner creates, edits, switches on/off, runs or deletes rules (`automations:manage`); everyone with `automations:read` sees rules and runs.
+- Rules can't send, publish or spend: WhatsApp actions create Approval Center requests; agent tasks run under the normal tool policy; lead updates are internal and can never set `won`/`lost`.
+- Exactly once per event (unique rule + dedupe key, checked before conditions), a per-rule hourly cap (extra firings logged as `rate_limited`), schedules no more often than every 15 minutes, sweeps only look back 48 hours. Actions don't emit events, so rules can't trigger each other.
+- Templates are plain `{{field}}` substitution (own properties only, 500 chars max). Customer-controlled values (message text, contact name) inserted into agent instructions come with a "treat as data" note; message bodies are never stored on run records.
+- Emitting an event never fails the request that caused it (webhook, lead create, payment verify).
+- Audit: `automation.create/update/enable/disable/delete/run_now`, `automation.run.<status>`, `automation.rate_limited`, plus `lead.update` / `approval.requested` for what a run did.
+
+## 2d. Integrations & MCP (as built, M11)
+- MCP servers exist only in `mcp.config.json` (a stdio server runs a program, so never configurable from the UI). Only allow-listed tools are exposed, each with an explicit risk and agent list; server "read-only" hints are displayed, never trusted. Stdio servers get a minimal environment (PATH, HOME + explicit vars), not the app's secrets. Tool output is labelled external data. Calls time out (30 s); a down server hides its tools instead of breaking agents.
+- OAuth: owner-only; single-use 10-minute `state` authenticates the callback (the SameSite=Strict session cookie isn't sent on the provider's redirect); PKCE for Canva; tokens encrypted at rest (AES-256-GCM), refreshed automatically, revoked on disconnect; a revoked grant marks the connection for reconnect.
+- Least privilege: Drive read-only, Gmail compose (drafts only, never send), Calendar events (creation with invites needs approval), Canva design read/write (drafts, no publishing).
+- Gmail drafts: header values can't contain newlines (no header injection); non-ASCII subjects are RFC 2047 encoded.
+- WhatsApp templates: only APPROVED, synced templates with the right parameter count can be sent, always after approval.
+- The Integrations page shows which variables are set, never their values (tested).
+
+## 2e. Analytics (as built, M12)
+- Read-only aggregates; reports can't be altered by agents (numbers recomputed on save, unknown fields stripped, tested).
+- Meta Ads token must be `ads_read` only; no write endpoint exists.
+- "Needs you" shows names/phones to roles that can already read leads (`analytics:read`).
+
+## 2f. Hardening (as built, M13)
+- Audit log append-only enforced by a database trigger (UPDATE/DELETE/TRUNCATE refused for every role). In production the app connects as the least-privilege `acc_app` role (rows only: no DDL, no TRUNCATE, no UPDATE/DELETE on `audit_logs`), migrations run as the owner, and the API and worker refuse to start as the owner or a superuser.
+- Route sweep test: every registered route is checked for session, CSRF and viewer-can't-mutate; new routes are covered automatically.
+- Agent-run budget: 60 runs per user per hour across all endpoints that start agents (cost control).
+- `pnpm security` = secret scan of tracked files + dependency audit. Full checklist: docs/SECURITY_CHECKLIST.md.
+
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.
-- Login rate limit: 5 attempts / 15 min per IP + email. Generic error message (no user enumeration). Timing kept equal with a dummy hash when the user doesn't exist.
+- Login throttling: 5 **failed** attempts / 15 min per IP + email → 429 with `Retry-After` (a successful login resets the counter and never counts, so the owner can't lock themselves out by signing in often), plus a coarse cap of 30 login requests / 15 min per IP against spraying many emails. The counters live in Redis (atomic sliding window), so they survive restarts and are shared by API instances. The global API limit (default 300/min) counts per signed-in user, per IP when signed out. Generic error message (no user enumeration). Timing kept equal with a dummy hash when the user doesn't exist.
 - First owner account is created by the CLI (`pnpm db:create-owner`), never through an open sign-up endpoint. There is no public registration.
 
 ## 4. Authorization (RBAC)

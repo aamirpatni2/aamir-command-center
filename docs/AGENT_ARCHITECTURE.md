@@ -7,7 +7,7 @@ interface AgentDefinition {
   id: AgentId;                     // "sales" | "content" | ...
   description: string;             // used by the Orchestrator for routing
   systemPrompt: string;            // loaded from /agents/<id>/prompt.md
-  model: ModelSelector;            // { provider: "anthropic", model: "claude-sonnet-5" }
+  model: ModelSelector;            // { provider: "anthropic", model: "claude-opus-5" } (default)
   tools: ToolName[];               // allow-list enforced by ToolRegistry
   maxSteps: number;                // hard cap on tool-use iterations
   outputSchema?: ZodSchema;        // structured result validation
@@ -28,6 +28,60 @@ interface ModelProvider {
 - **AgentRunner** runs the tool-use loop: model call → validate tool calls → ToolRegistry → feed results back → repeat until `end_turn` or `maxSteps`. It records every step in `agent_runs` / `agent_messages`.
 - **ToolRegistry** is the single gate. It checks the allow-list, validates input and applies the risk policy, which can create an approval instead of running the tool.
 - **ModelProvider** adapters: `AnthropicProvider` (first), `OpenAIProvider` and `GoogleProvider` (later), and `MockProvider` (tests only, scripted responses).
+
+### As built (Milestone 3)
+- `packages/agents/src/model/` — `ModelProvider` interface; `AnthropicProvider` (Messages API, `claude-opus-5` default, adaptive thinking as the model default, `effort` per agent, server-side refusal fallback `fallbacks: "default"`, thinking blocks replayed unchanged inside the tool loop, tool names `a.b` ↔ `a__b`); `MockProvider` (dev/test only, every output labelled `[MOCK]`, runs stored with `model_provider = 'mock'`); `resolveModel()` refuses mocks in production.
+- `packages/agents/src/tools/registry.ts` — allow-list → Zod input validation → risk policy → timeout (30 s default) → audit. `external/destructive/financial` tools create an `approvals` row (idempotency key `runId:toolCallId`) and are **never executed** by the runner. Denied calls write `tool.denied` audit rows.
+- `packages/agents/src/runtime/runner.ts` — the loop. Persists every message to `agent_messages`, publishes `run.*` events, stops on refusal (`MODEL_REFUSAL`), output limit (`MAX_TOKENS`), `maxSteps` (`MAX_STEPS`) or cancellation (`CANCELLED`); provider errors map to stable codes (`PROVIDER_AUTH`, `PROVIDER_RATE_LIMIT`, …) without leaking credentials. Structured results use an automatic `finish` tool validated against the agent's `outputSchema` (one retry on invalid output).
+- `packages/agents/src/runtime/execute-task.ts` — claims a `QUEUED` task atomically (duplicate jobs are no-ops), runs the Orchestrator, and never overwrites a cancellation that happened mid-run.
+- `apps/worker` — BullMQ consumer (concurrency 2, **no automatic retries** so side effects can't repeat), publishes events on Redis pub/sub; a crash marks the task `FAILED` rather than leaving it `RUNNING`.
+- Internal tools so far: `kb.search` (approved knowledge only; keyword search until vectors land in M8) and `memory.propose` (stores `proposed` memory only).
+- In M3 the Orchestrator answered directly with those tools; M4 added delegation (below).
+
+### As built (Milestone 4): plan → delegate → verify → summarise
+`packages/agents/src/orchestration/orchestrate.ts`. The model decides; code enforces the structure.
+1. **Plan**: the Orchestrator (effort high, tools `kb.search`, `memory.propose`) receives the specialist catalogue (descriptions + current limitations) and must return a plan through `finish`, validated by `planSchema`: `intent`, output `language`, either `directAnswer` (no delegation, one model call) or 1–6 `steps` `{agent, instruction, acceptance, dependsOn}`. The agent enum only contains real specialists; `dependsOn` may only point to earlier steps, so cycles are impossible. Invalid plans are returned to the model to fix.
+2. **Delegate**: steps run in order. A step receives its instruction, acceptance criteria, language, its own limitation, and only the outputs of the steps it depends on, wrapped in `<step_output>` tags and labelled as data. If a dependency failed, the step is skipped (`CANCELLED`) with the reason; independent steps still run. Cancellation is checked before every step. Each specialist returns `stepResultSchema` (`summary`, `output`, `sources`, `unverifiedClaims`, `blockers`).
+3. **Verify + summarise**: a review run (`orchestratorReview`, effort medium) gets every step's instruction, acceptance, status and output, checks criteria and conflicts (with `kb.search`), and returns `answer`, `issues`, `nextSteps`. If the review fails, the raw step outputs are returned so work is never lost.
+4. **Status**: `WAITING_APPROVAL` if any action awaits approval, `FAILED` if planning failed or no step produced a result, otherwise `COMPLETED` with issues listed.
+Persistence: `agent_tasks.plan`, one `agent_steps` row per step (status tracked), specialist and review runs link to the planner run via `parent_run_id`, and specialist runs link to their step via `step_id`.
+
+### As built (Milestone 5): Sales + WhatsApp
+- Tools (`packages/agents/src/tools/crm.ts`): `conversation.read`, `crm.lead.search`, `crm.lead.get` (read), `crm.lead.update` (write: status except won/lost, append note, next follow-up, profile fit; rescored after), `whatsapp.send` (external → approval; a newer draft for the same conversation supersedes older pending ones via `supersedeKey`).
+- Sales Agent: `kb.search`, `crm.lead.search`, `crm.lead.get`, `crm.lead.update`. WhatsApp Agent: `kb.search`, `conversation.read`, `crm.lead.update`, `whatsapp.send`.
+- Inbound WhatsApp → webhook → `ingestInboundMessage` (contact/conversation/message/lead in one transaction, idempotent on provider message id) → debounced **triage job** → pre-planned task (`preset: true, skipReview: true`) that goes straight to the WhatsApp Agent. One model loop per burst of messages, no planner or review cost.
+- Lead scoring is deterministic code (`packages/shared/src/lead-scoring.ts`), never model-generated; keyword signal detection covers English, Roman Urdu and Urdu script.
+
+### As built (Milestone 6): Student + Course
+- `course.catalog` (read) gives active courses and open batches with today's price (early-bird aware), dates, schedule and seats. It is granted to Sales, WhatsApp, Content, Marketing, Student and Course agents; draft courses are invisible to agents.
+- Student Agent tools: `student.search`, `student.get` (attendance, assignments, verified vs pending payments, balance, certificate checks), `student.message` (external → approval, one pending per student), `certificate.request` (external → approval).
+- Progress and eligibility are computed in code (`packages/database/src/education.ts`, `packages/shared/src/education.ts`), never by the model.
+
+### As built (Milestone 7): Content
+- Content Agent tools: `kb.search`, `course.catalog`, `content.search` (avoid repeats), `content.save` (draft; one of 9 validated formats; returns automatic checks so the agent can fix flagged claims and re-save).
+- Prompt encodes Aamir's content system (voice, hook frameworks, Reel/YouTube structures, repurposing) with truth rules that override style: no invented stats, income figures or testimonials; prices and dates only from the catalogue.
+- Tool schemas are tested to be model-compatible (top-level JSON object) for every agent.
+
+### As built (Milestone 8): Research + Knowledge
+- Research Agent tools: `web.search` (Brave or Tavily), `web.fetch` (SSRF-safe: http(s) only, public IPs after DNS resolution, redirects re-checked, 2 MB / 15 s limits, text only), `kb.search`, `research.save`.
+- `research.save` enforces integrity in code: sources are kept only if their URL appears in this run's `web.search`/`web.fetch` results; a "verified" or "contradicted" claim without such a source is downgraded to unverified with a note. Reports are stored in `research_reports`.
+- Without a web key the tools return `not_configured`: no fake results.
+- Knowledge (RAG): approving a document chunks it (~900 chars, overlap) and embeds chunks with Voyage (`voyage-3.5`, 1024-d) when `VOYAGE_API_KEY` is set. `kb.search` is hybrid: Postgres full-text (`simple` config: English, Roman Urdu, Urdu) + pgvector cosine (HNSW), merged by reciprocal rank fusion, one best chunk per document. Editing approved knowledge returns it to draft and removes it from search until re-approved.
+- Memory: `memory.propose` items are reviewed on the Knowledge page (keep/discard).
+
+Specialists today: all eight exist with prompts in `agents/<id>/prompt.md` + `agents/_shared.md`. Until their data/tools arrive (CRM M5, students M6, web M8, analytics M12) each carries a `limitations` note that the planner sees and the agent must respect. For example, the Research Agent returns every time-sensitive claim as unverified because it has no web access yet.
+
+Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, real model). CI tests check the guard-rails (schema, dependencies, failure handling) with scripted mocks.
+
+### As built (Milestone 9): Approval Center
+- `approvals/executors.ts`: one executor per approval-gated tool. It re-validates the stored payload with the tool's schema, checks preconditions at execution time and returns `executed` / `not_executed` (nothing happened; retryable) / `unknown` (may have happened; never retried).
+- `approvals/service.ts`: approve, edit, reject/cancel, execute (retry), expiry, and `settleTask`, which resumes a `WAITING_APPROVAL` task by completing it with `approvalOutcomes` once none of its approvals is open. Agents are not re-run after a decision; follow-ups are new tasks (automations, M10).
+- Tools declare `editableFields` (e.g. `["text"]`), so a person can reword a reply but never change who receives it.
+
+### As built (Milestone 10): Automations
+- `automations/engine.ts`: event context loading, time-based sweeps, `runRule` (dedupe → conditions → hourly cap → actions → run log), dry run, cron validation. Rule definitions and pure helpers (conditions, templates, starter templates) live in `packages/shared/src/automations.ts` so the UI builder uses the same schema.
+- Agent actions: a specialist gets a one-step preset plan (no planner call); `orchestrator` plans normally. Tasks have `source = automation` and `automation_rule_id`.
+- Worker: second BullMQ worker on the `automations` queue (`event`, `schedule`, `sweep` jobs, concurrency 1).
 
 ## 2. Orchestrator
 

@@ -1,0 +1,133 @@
+# Production stack: Caddy (HTTPS) → API (+ dashboard) · worker · Postgres (pgvector) · Redis · backups.
+#   cd deploy && ./generate-env.sh && nano app.env && docker compose up -d --build
+# .env     → stack settings (domain, database passwords); read by compose, never by the app.
+# app.env  → the app's own secrets and API keys. The app never sees the database owner password.
+# See docs/DEPLOYMENT.md.
+name: acc
+
+x-app: &app
+  image: aamir-command-center:${APP_VERSION:-latest}
+  build:
+    context: ..
+  env_file: app.env
+  environment: &app-env
+    NODE_ENV: production
+    DATABASE_URL: postgres://${APP_DB_ROLE:-acc_app}:${APP_DB_PASSWORD}@postgres:5432/acc
+    REDIS_URL: redis://redis:6379
+    PUBLIC_URL: ${PUBLIC_URL}
+    WEB_ORIGINS: ${PUBLIC_URL}
+  volumes:
+    - app-data:/app/data
+  init: true
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: acc_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: acc
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acc_owner -d acc"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # The task queue lives here: persist it, and never evict keys (BullMQ requirement).
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Runs migrations as the owner and (re)grants the least-privilege app role, then exits.
+  migrate:
+    <<: *app
+    command: ["node", "--import", "tsx", "packages/database/scripts/migrate.ts"]
+    environment:
+      <<: *app-env
+      MIGRATION_DATABASE_URL: postgres://acc_owner:${POSTGRES_PASSWORD}@postgres:5432/acc
+      APP_DB_ROLE: ${APP_DB_ROLE:-acc_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["node", "--import", "tsx", "apps/worker/src/index.ts"]
+    # The worker writes a heartbeat every 15 s while Redis and Postgres answer (apps/worker).
+    healthcheck:
+      test: ["CMD", "node", "-e", "const t=+require('fs').readFileSync('/tmp/acc-worker-heartbeat','utf8');process.exit(Date.now()-t<60000?0:1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Nightly pg_dump into ./backups (kept BACKUP_KEEP_DAYS). Copy them off the server too.
+  backup:
+    image: pgvector/pgvector:pg16
+    entrypoint: ["/bin/bash", "/scripts/backup-loop.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: acc_owner
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: acc
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_AT: ${BACKUP_AT:-02:30}
+      TZ: Asia/Karachi
+    volumes:
+      - ./backups:/backups
+      - ./scripts:/scripts:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  app-data:
+  caddy-data:
+  caddy-config:

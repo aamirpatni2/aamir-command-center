@@ -35,6 +35,10 @@ export const leads = pgTable(
     status: leadStatus("status").notNull().default("new"),
     score: integer("score").notNull().default(0),
     scoreReasons: jsonb("score_reasons").$type<{ rule: string; points: number }[]>().notNull().default([]),
+    /** Detected/confirmed buying signals (see packages/shared/src/lead-scoring.ts). */
+    signals: jsonb("signals").$type<import("@acc/shared").LeadSignals>().notNull().default({}),
+    inboundMessageCount: integer("inbound_message_count").notNull().default(0),
+    lastInboundAt: timestamp("last_inbound_at", { withTimezone: true }),
     interestedCourseId: uuid("interested_course_id").references(() => courses.id),
     ownerUserId: uuid("owner_user_id").references(() => users.id),
     nextFollowUpAt: timestamp("next_follow_up_at", { withTimezone: true }),
@@ -92,4 +96,23 @@ export const messages = pgTable(
     uniqueIndex("messages_provider_id_unique").on(t.providerMessageId),
     index("messages_conversation_idx").on(t.conversationId, t.createdAt),
   ],
+);
+
+/**
+ * Raw webhook deliveries, keyed by a hash of the signed body. A replayed delivery hits the unique
+ * index and is ignored. Kept for debugging; prune after 30 days.
+ */
+export const webhookEvents = pgTable(
+  "webhook_events",
+  {
+    id: id(),
+    provider: text("provider").notNull(),
+    bodyHash: text("body_hash").notNull(),
+    status: text("status").notNull().default("received"),
+    error: text("error"),
+    summary: jsonb("summary").$type<Record<string, unknown>>().notNull().default({}),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("webhook_events_provider_hash_unique").on(t.provider, t.bodyHash), index("webhook_events_received_idx").on(t.receivedAt)],
 );

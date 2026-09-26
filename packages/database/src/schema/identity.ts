@@ -37,6 +37,28 @@ export const sessions = pgTable(
   (t) => [uniqueIndex("sessions_token_hash_unique").on(t.tokenHash), index("sessions_user_idx").on(t.userId)],
 );
 
+/**
+ * Single-use links sent by email: an invite (set your first password) or a password reset.
+ * Only an HMAC of the token is stored; the token itself exists only in the email.
+ */
+export const userTokens = pgTable(
+  "user_tokens",
+  {
+    id: id(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    purpose: text("purpose", { enum: ["invite", "reset"] }).notNull(),
+    tokenHash: text("token_hash").notNull(),
+    /** The address the link was sent to (changing the user's email revokes open links). */
+    sentTo: citext("sent_to").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("user_tokens_hash_unique").on(t.tokenHash), index("user_tokens_user_idx").on(t.userId, t.purpose)],
+);
+
 /** Append-only. The app never updates or deletes rows here. */
 export const auditLogs = pgTable(
   "audit_logs",

@@ -1,0 +1,11 @@
+# TEST ONLY — never in production. Adds Mailpit, a local SMTP server that catches every email
+# (nothing is delivered). Used by CI to run the invite flow over real SMTP; also handy for trying
+# invites on your PC. Web UI: http://localhost:8025
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.mailtest.yml docker compose up -d
+#   and in app.env: SMTP_URL=smtp://mailpit:1025  EMAIL_FROM=Command Center <team@example.test>
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped

@@ -1,0 +1,32 @@
+{
+  "servers": [
+    {
+      "id": "files",
+      "label": "Course files",
+      "description": "Read-only access to uploaded course material in data/uploads (official MCP filesystem server).",
+      "transport": "stdio",
+      "command": "mcp-server-filesystem",
+      "args": ["${root}/data/uploads"],
+      "tools": {
+        "list_directory": { "risk": "read", "agents": ["course", "content", "research", "student"] },
+        "read_text_file": { "risk": "read", "agents": ["course", "content", "research", "student"] },
+        "search_files": { "risk": "read", "agents": ["course", "content", "research", "student"] },
+        "get_file_info": { "risk": "read", "agents": ["course", "content", "research", "student"] }
+      }
+    },
+    {
+      "id": "github",
+      "label": "GitHub (read-only)",
+      "description": "Course code and student assignment repositories via GitHub's MCP server. Needs a fine-grained, read-only token.",
+      "transport": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": { "Authorization": "Bearer ${env:GITHUB_TOKEN}" },
+      "requires": ["GITHUB_TOKEN"],
+      "tools": {
+        "search_repositories": { "risk": "read", "agents": ["course", "research"] },
+        "get_file_contents": { "risk": "read", "agents": ["course", "research"] },
+        "list_issues": { "risk": "read", "agents": ["course"] }
+      }
+    }
+  ]
+}

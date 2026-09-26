@@ -55,9 +55,28 @@ Source of truth: `packages/database/src/schema/*.ts`.
 | `agent_steps` | task_id, position, agent_id, instruction, depends_on int[], status, run_id |
 | `agent_runs` | task_id, step_id, parent_run_id, agent_id, status, model_provider, model, input jsonb, output jsonb, state jsonb, latency_ms, input_tokens, output_tokens, cost_micro_usd, tool_call_count, error_code, error_message, started_at, finished_at |
 | `agent_messages` | run_id, seq, role (`system/user/assistant/tool`), content jsonb, tool_name, tool_call_id, tool_risk, latency_ms, is_error | unique (run_id, seq) |
-| `approvals` | task_id, run_id, action_type, tool_name, risk, title, summary, payload jsonb, edited_payload jsonb, status (`pending/approved/rejected/expired/executed/failed`), requested_by_agent, decided_by, decided_at, decision_note, idempotency_key (unique), expires_at, executed_at, execution_result jsonb |
+| `approvals` | task_id, run_id, action_type, tool_name, risk, title, summary, payload jsonb, edited_payload jsonb, status (`pending/approved/executing/executed/rejected/expired/failed`), requested_by_agent, decided_by, decided_at, decision_note, idempotency_key (unique), expires_at, executed_at, execution_result jsonb, execution_attempts (M9) | Every transition is one conditional UPDATE (`… WHERE status = pending` / `approved`), so an action is approved once and claimed by exactly one executor |
 | `automation_rules` | name, trigger (`event/schedule/webhook`), trigger_config jsonb, conditions jsonb, steps jsonb, policy jsonb (auto-approve scope), enabled, created_by, last_run_at |
 | `memory_items` | kind (`fact/preference/decision/event`), subject, content, source (`user/agent/system`), status (`proposed/approved/rejected`), confidence, source_run_id, approved_by |
+
+### Automations (M10)
+| Table | Key columns | Notes |
+|---|---|---|
+| `automation_rules` | name, trigger (`event/schedule`), trigger_config (the trigger object), conditions, steps (actions), policy (`maxRunsPerHour`), enabled, run_count, last_run_at | soft delete |
+| `automation_runs` | rule_id, event, dedupe_key, status (`running/completed/partial/failed/rate_limited`), context (ids/labels, never message bodies), actions (results), error | **unique (rule_id, dedupe_key)**: one firing per event |
+| `approvals.automation_run_id` | FK | set when an automation (not an agent) requested the action |
+
+### Integrations (M11)
+| Table | Key columns | Notes |
+|---|---|---|
+| `integration_connections` | provider (unique), account_label, scopes, access_token_enc, refresh_token_enc, access_token_expires_at, status, last_error | tokens AES-256-GCM encrypted with ACC_ENCRYPTION_KEY |
+| `oauth_states` | state (PK), provider, user_id, code_verifier_enc, expires_at | single-use, 10 minutes |
+| `whatsapp_templates` | name + language (unique), status, category, body, body_params, components | mirror of WhatsApp Manager |
+
+### Analytics (M12)
+| Table | Key columns | Notes |
+|---|---|---|
+| `analytics_reports` | period, from_date, to_date, title, metrics jsonb, narrative, source (`user/agent/automation`), created_by, task_id | metrics are always computed by the server |
 
 ### Knowledge (RAG)
 | Table | Key columns |
