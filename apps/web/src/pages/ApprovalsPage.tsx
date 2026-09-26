@@ -18,6 +18,8 @@ const TOOL_LABEL: Record<string, string> = {
   "whatsapp.send": "WhatsApp reply",
   "student.message": "Message to student",
   "certificate.request": "Certificate",
+  "whatsapp.send_template": "WhatsApp template",
+  "google.calendar.create_event": "Calendar event",
 };
 
 function errorText(e: unknown) {
@@ -135,7 +137,15 @@ function ApprovalCard({ a }: { a: Approval }) {
           </blockquote>
         )}
 
-        {text !== null ? (
+        {a.tool === "whatsapp.send_template" && (
+          <div className="rounded-2xl rounded-br-sm border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-ink">
+            <p className="text-xs text-ink-3">Template <span className="font-mono text-ink-2">{String(a.payload.template)}</span> ({String(a.payload.language)}) · allowed outside the 24h window</p>
+            {Array.isArray(a.payload.params) && a.payload.params.length > 0 && (
+              <ol className="mt-1 list-decimal pl-5 text-sm">{(a.payload.params as string[]).map((p, i) => <li key={i}>{p}</li>)}</ol>
+            )}
+          </div>
+        )}
+        {a.tool === "whatsapp.send_template" ? null : text !== null ? (
           editing ? (
             <div>
               <label htmlFor={`edit-${a.id}`} className="text-xs text-ink-3">Message text</label>

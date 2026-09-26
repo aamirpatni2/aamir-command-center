@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–10)
+## Implemented (Milestones 1–11)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -85,10 +85,15 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/automations/:id/run` | owner | schedule rules only: run once now (works while switched off) |
 | POST | `/api/automations/dry-run` | owner | definition → sample record, condition results, rendered actions, next runs. No writes |
 | DELETE | `/api/automations/:id` | owner | soft delete + remove schedule |
+| GET | `/api/integrations` | `mcp:read` (owner/admin) | core services (state + which env vars are set, never values), OAuth providers (connection, account, scopes, redirect URL, setup steps), MCP servers (state, error, tools with risk/agents/availability), synced WhatsApp templates |
+| POST | `/api/integrations/:provider/connect` | `mcp:manage` (owner) | `google`/`canva` → `{url}` to the provider; 400 `NOT_CONFIGURED` naming the missing variables |
+| GET | `/api/integrations/oauth/callback` | none (single-use state) | provider redirect; exchanges the code, stores encrypted tokens, 302 to `/mcp?connected=…` or `?error=…` |
+| POST | `/api/integrations/:provider/test` · `/disconnect` | owner | live check (refreshes if needed) / revoke + forget; `whatsapp` test checks the phone number ID |
+| POST | `/api/integrations/mcp/:id/test` | owner | reconnect a configured MCP server and report its state |
+| POST | `/api/whatsapp/templates/sync` | `mcp:read` | mirror templates from WhatsApp Manager |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/mcp` | 11 |
 | `/api/analytics` | 12 |

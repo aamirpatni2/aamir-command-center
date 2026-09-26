@@ -17,7 +17,7 @@ import {
   type AutomationAction, type AutomationContext, type AutomationEvent, type ConditionResult, type RuleDefinition,
 } from "@acc/shared";
 import { requestApproval } from "../approvals/service.js";
-import { whatsappSend } from "../tools/crm.js";
+import { whatsappSend, whatsappSendTemplate } from "../tools/crm.js";
 import type { PresetPlan } from "../orchestration/orchestrate.js";
 
 export type RuleRow = typeof schema.automationRules.$inferSelect;
@@ -432,6 +432,19 @@ async function runAction(
       });
       return { type: action.type, status: "ok", message: "Draft sent to the Approval Center", approvalId };
     }
+    case "whatsapp.template": {
+      const conversationId = ctx["conversation.id"];
+      if (!conversationId) return { type: action.type, status: "skipped", message: "No WhatsApp conversation for this event" };
+      const params = action.params.map((p) => renderTemplate(p, ctx));
+      const approvalId = await requestApproval(db, {
+        tool: whatsappSendTemplate,
+        payload: { conversationId: String(conversationId), template: action.template, language: action.language, params },
+        title: `Automation "${def.name}": send WhatsApp template "${action.template}"`,
+        idempotencyKey: `automation:${runId}:${index}`,
+        automationRunId: runId,
+      });
+      return { type: action.type, status: "ok", message: `Template "${action.template}" sent to the Approval Center`, approvalId };
+    }
   }
 }
 
@@ -535,6 +548,8 @@ export async function dryRun(db: Database, def: RuleDefinition, now = new Date()
           ? `${a.agent === "orchestrator" ? "Orchestrator" : `${a.agent} agent`}: ${renderTemplate(a.instruction, firing!.context)}`
           : a.type === "whatsapp.draft"
             ? `Approval request: "${renderTemplate(a.text, firing!.context)}"`
+            : a.type === "whatsapp.template"
+              ? `Approval request: template "${a.template}" (${a.language}) with ${a.params.map((p) => `"${renderTemplate(p, firing!.context)}"`).join(", ") || "no parameters"}`
             : [a.status && `status → ${a.status}`, a.appendNote && `note: "${renderTemplate(a.appendNote, firing!.context)}"`, a.followUpInHours !== undefined && `follow-up in ${a.followUpInHours} h`]
                 .filter(Boolean)
                 .join(" · "),

@@ -106,6 +106,13 @@ export const actionSchema = z.discriminatedUnion("type", [
     /** Always an Approval Center request; never sent without a person approving it. */
     text: template(1000),
   }),
+  z.object({
+    type: z.literal("whatsapp.template"),
+    /** An APPROVED template synced from WhatsApp Manager; works outside the 24-hour window. Still needs approval. */
+    template: z.string().trim().min(1).max(512),
+    language: z.string().trim().min(2).max(15),
+    params: z.array(template(300)).max(10).default([]),
+  }),
 ]);
 export type AutomationAction = z.infer<typeof actionSchema>;
 
@@ -113,6 +120,7 @@ export const ACTION_LABEL: Record<AutomationAction["type"], string> = {
   agent_task: "Give an agent a task",
   "lead.update": "Update the lead",
   "whatsapp.draft": "Draft a WhatsApp message (needs approval)",
+  "whatsapp.template": "Send a WhatsApp template (needs approval)",
 };
 
 /** Actions that need a lead / conversation in the event context. */
@@ -120,6 +128,7 @@ export const ACTION_NEEDS: Record<AutomationAction["type"], string | null> = {
   agent_task: null,
   "lead.update": "lead.id",
   "whatsapp.draft": "conversation.id",
+  "whatsapp.template": "conversation.id",
 };
 
 export const ruleDefinitionSchema = z
@@ -248,6 +257,18 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
       trigger: { event: "lead.no_reply", hours: 20 },
       conditions: [{ field: "lead.band", op: "in", value: ["hot", "warm"] }],
       actions: [{ type: "agent_task", agent: "whatsapp", instruction: "{{contact.name|This lead}} hasn't replied for {{hours.silent}} hours to our last message in conversation {{conversation.id}}. Read the conversation and, if a follow-up makes sense, submit one short, friendly, non-pushy follow-up with whatsapp.send (it goes to approval)." }],
+      maxRunsPerHour: 20,
+      enabled: false,
+    },
+  },
+  {
+    id: "template-reengage",
+    definition: {
+      name: "Re-engage quiet leads with a template",
+      description: "After 3 days without a reply the 24-hour window is closed, so a pre-approved WhatsApp template is prepared for your approval. Set the template name to one you created and synced.",
+      trigger: { event: "lead.no_reply", hours: 72 },
+      conditions: [{ field: "lead.band", op: "in", value: ["hot", "warm"] }],
+      actions: [{ type: "whatsapp.template", template: "follow_up", language: "en", params: ["{{contact.name|there}}"] }],
       maxRunsPerHour: 20,
       enabled: false,
     },

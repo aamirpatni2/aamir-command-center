@@ -58,7 +58,7 @@ export const NAV: NavSection[] = [
       { path: "/agents", label: "Agents", icon: Bot, milestone: 3, ready: true, permission: "tasks:read", description: "Agent activity: runs, tools used, duration, results and errors" },
       { path: "/tasks", label: "Tasks", icon: ListChecks, milestone: 3, ready: true, permission: "tasks:read", description: "Give the Orchestrator a task and follow its plan" },
       { path: "/knowledge", ready: true, label: "Knowledge", icon: Brain, milestone: 8, permission: "knowledge:read", description: "Approved business knowledge used by agents (RAG)" },
-      { path: "/mcp", label: "MCP Tools", icon: Plug, milestone: 11, permission: "mcp:read", description: "Connected MCP servers, tools and permissions" },
+      { path: "/mcp", label: "Integrations", icon: Plug, milestone: 11, ready: true, permission: "mcp:read", description: "WhatsApp, Google, Canva, web search and MCP servers: status, connections and tool permissions" },
     ],
   },
   {

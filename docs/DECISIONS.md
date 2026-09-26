@@ -135,5 +135,15 @@ Each decision lists the alternatives and why the simplest production-ready optio
 - **Decision**: automation messaging always creates an Approval Center request; `policy.autoApprove` stays unused.
 - **Why**: the project rule is "no external action without explicit approval". Owner-approved WhatsApp templates (M11) are the right unit for pre-approval; free-text drafts are not.
 
+## ADR-038 — MCP servers from a committed config file with an explicit tool allow-list
+- **Alternatives**: manage servers in the UI/DB; expose every tool a server offers; trust servers' readOnly annotations.
+- **Why**: a stdio server is arbitrary code on the host; a config file under review is the safe place for it. Explicit per-tool risk and agent grants keep the ToolRegistry the single enforcement point (ADR-010), and a server adding new tools can't silently widen what agents can do.
+
+## ADR-039 — Google and Canva via direct REST + OAuth, not MCP (for now)
+- **Why**: both need per-user OAuth; our own small OAuth service gives encrypted storage, refresh, revoke and exact scopes, and each tool gets a precise risk level (e.g. Gmail drafts only). Their remote MCP servers can be added through mcp.config.json later without touching agents.
+
+## ADR-040 — Templates are the only way to message outside WhatsApp's 24-hour window
+- **Why**: Meta rejects free text after 24 h. Templates are pre-approved by Meta, synced locally, validated (approved status, parameter count) at send time and still approved by Aamir per message.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

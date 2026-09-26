@@ -115,7 +115,8 @@ export class AgentRunner {
     let result: RunResult;
 
     try {
-      const specs: ToolSpec[] = this.deps.tools.specsFor(p.agent.tools);
+      const allowed = this.deps.tools.allowedFor(p.agent.id, p.agent.tools);
+      const specs: ToolSpec[] = this.deps.tools.specsFor(allowed);
       if (p.agent.outputSchema) {
         const s = z.toJSONSchema(p.agent.outputSchema, { target: "draft-7", io: "input" }) as Record<string, unknown>;
         delete s.$schema;
@@ -185,7 +186,7 @@ export class AgentRunner {
           }
 
           const t1 = Date.now();
-          const outcome = await this.deps.tools.execute(p.agent.tools, call, {
+          const outcome = await this.deps.tools.execute(allowed, call, {
             db,
             taskId: p.taskId,
             runId,

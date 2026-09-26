@@ -3,7 +3,7 @@ import { envSchema } from "@acc/config";
 import { createDb, hashPassword, schema, type DbHandle } from "@acc/database";
 import { resetTestDatabase } from "@acc/database/testing";
 import type { Role } from "@acc/shared";
-import type { AutomationQueue, TaskQueue } from "@acc/agents";
+import { McpClientManager, type AutomationQueue, type TaskQueue } from "@acc/agents";
 import { buildApp } from "../app.js";
 
 export class MemoryQueue implements TaskQueue {
@@ -55,7 +55,7 @@ export async function setupTestApp(
     loginIp: { max: 1_000, timeWindow: "1 minute" },
   },
   envOverrides: Record<string, string> = {},
-  extra: Pick<Parameters<typeof buildApp>[0], "whatsapp"> = {},
+  extra: Pick<Parameters<typeof buildApp>[0], "whatsapp" | "mcp" | "oauthFetch"> = {},
 ): Promise<TestContext> {
   const url = await resetTestDatabase();
   const env = envSchema.parse({
@@ -69,7 +69,9 @@ export async function setupTestApp(
   const queue = new MemoryQueue();
   const handle = createDb(url, { max: 5 });
   const automations = new MemoryAutomationQueue();
-  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue, automationQueue: automations, ...extra });
+  // No MCP servers in API tests unless a test injects its own manager.
+  const mcp = extra.mcp ?? new McpClientManager({ servers: [] }, { root: process.cwd() });
+  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue, automationQueue: automations, ...extra, mcp });
   await app.ready();
   return { app, handle, queue, automations };
 }

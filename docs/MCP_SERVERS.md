@@ -3,17 +3,17 @@
 Status key: **planned** = designed, not installed · **internal** = served by our own
 code, no MCP needed · **active** = configured and tested.
 
-Rule: install only what a milestone actually needs. No server is active yet (Milestone 1).
+Rule: install only what a milestone actually needs. Active servers and their allow-listed tools are defined in `mcp.config.json` (see the Integrations page for live status).
 
 | # | Category | Server | Status | Milestone |
 |---|---|---|---|---|
 | 1 | Database | internal tools over Postgres (not MCP) | internal | 3 |
-| 2 | Filesystem | `@modelcontextprotocol/server-filesystem` (scoped to `/data/uploads`) | planned | 11 |
+| 2 | Filesystem | `@modelcontextprotocol/server-filesystem` (scoped to `data/uploads`, read-only tools) | **active** | 11 |
 | 3 | Web / research | Brave Search API or Tavily API (direct adapters) + SSRF-safe fetch | **built** (needs `BRAVE_API_KEY` or `TAVILY_API_KEY`) | 8 |
-| 4 | GitHub | `github/github-mcp-server` | planned (optional) | 11 |
-| 5 | Google (Drive, Calendar, Gmail) | Google Workspace MCP | planned | 11 |
+| 4 | GitHub | GitHub remote MCP server (read-only tools) | **configured** (needs `GITHUB_TOKEN`) | 11 |
+| 5 | Google (Drive, Calendar, Gmail) | direct REST + OAuth (ADR-039) | **built** (needs `GOOGLE_CLIENT_ID/SECRET` + connect) | 11 |
 | 6 | WhatsApp | WhatsApp Cloud API (official Meta Graph API) — direct adapter | **built**: receive (webhook) + send approved replies (needs `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`) | 5/9 |
-| 7 | Canva | Canva MCP (Connect API) | planned | 11 |
+| 7 | Canva | Canva Connect REST + OAuth/PKCE (ADR-039) | **built** (needs `CANVA_CLIENT_ID/SECRET` + connect) | 11 |
 | 8 | Meta Ads / analytics | Meta Marketing API MCP (read-only first) | planned | 12 |
 | 9 | Browser automation | Playwright MCP — research only, never logged into business accounts | planned (optional) | 8 |
 | 10 | Project management | Notion MCP | planned (optional) | 11 |

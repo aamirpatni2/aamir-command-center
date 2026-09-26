@@ -53,6 +53,7 @@ fi
 
 # 5. Apply database migrations to the dev database.
 log "applying migrations"
+mkdir -p data/uploads data/exports
 pnpm db:migrate >/dev/null
 
 log "ready: pnpm dev:api · pnpm dev:worker · pnpm dev:web · pnpm test"

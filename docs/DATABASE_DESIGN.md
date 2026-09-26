@@ -66,6 +66,13 @@ Source of truth: `packages/database/src/schema/*.ts`.
 | `automation_runs` | rule_id, event, dedupe_key, status (`running/completed/partial/failed/rate_limited`), context (ids/labels, never message bodies), actions (results), error | **unique (rule_id, dedupe_key)**: one firing per event |
 | `approvals.automation_run_id` | FK | set when an automation (not an agent) requested the action |
 
+### Integrations (M11)
+| Table | Key columns | Notes |
+|---|---|---|
+| `integration_connections` | provider (unique), account_label, scopes, access_token_enc, refresh_token_enc, access_token_expires_at, status, last_error | tokens AES-256-GCM encrypted with ACC_ENCRYPTION_KEY |
+| `oauth_states` | state (PK), provider, user_id, code_verifier_enc, expires_at | single-use, 10 minutes |
+| `whatsapp_templates` | name + language (unique), status, category, body, body_params, components | mirror of WhatsApp Manager |
+
 ### Knowledge (RAG)
 | Table | Key columns |
 |---|---|

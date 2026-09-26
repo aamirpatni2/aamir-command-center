@@ -8,7 +8,7 @@ import pino from "pino";
 import { loadEnv } from "@acc/config";
 import { createDb, eq, isNull, schema } from "@acc/database";
 import {
-  AUTOMATION_QUEUE, createAutomationQueue, createDefaultToolRegistry, createTaskQueue, createWhatsappTriageTask, embedderFromEnv, executeTask,
+  AUTOMATION_QUEUE, createAutomationQueue, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, createDefaultToolRegistry, createTaskQueue, createWhatsappTriageTask, embedderFromEnv, executeTask,
   handleEvent, handleSchedule, handleSweep, modelAvailability, RedisEventSink, resolveModel, ruleFromRow, SWEEP_EVERY_MS, TASK_QUEUE, TRIAGE_JOB,
   webSearchFromEnv, type AutomationJob, type EngineDeps,
 } from "@acc/agents";
@@ -26,7 +26,14 @@ const publisher = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const events = new RedisEventSink(publisher);
 const webSearch = webSearchFromEnv(env);
 const embedder = embedderFromEnv(env);
-const tools = createDefaultToolRegistry({ webSearch, embedder });
+const oauth = new OAuthService({ db: handle.db, env, publicUrl: env.PUBLIC_URL });
+const mcp = new McpClientManager(loadMcpConfig(defaultMcpConfigPath(REPO_ROOT, process.env)), {
+  root: REPO_ROOT,
+  log: (msg, meta) => logger.info(meta ?? {}, msg),
+});
+// MCP tools are registered now and offered to agents as soon as their server connects.
+void mcp.start().then(() => logger.info({ servers: mcp.statuses().map((s) => `${s.id}:${s.state}`) }, "mcp servers"));
+const tools = createDefaultToolRegistry({ webSearch, embedder, oauth, mcp });
 logger.info({ webSearch: webSearch?.id ?? "not configured", embeddings: embedder ? embedder.model : "not configured (full-text search only)" }, "integrations");
 
 const availability = modelAvailability(env);
@@ -128,6 +135,7 @@ const shutdown = async (signal: string) => {
   logger.info({ signal }, "shutting down worker");
   await worker.close();
   await automationWorker.close();
+  await mcp.close();
   await Promise.allSettled([taskQueue.close(), automationQueue.close()]);
   await publisher.quit();
   await handle.close();

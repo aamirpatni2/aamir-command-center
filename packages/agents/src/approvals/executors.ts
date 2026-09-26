@@ -9,7 +9,10 @@
  */
 import { and, desc, eq, issueCertificate, schema, sql, type Database } from "@acc/database";
 import { CUSTOMER_SERVICE_WINDOW_MS, type WhatsAppClient } from "../integrations/whatsapp/client.js";
-import { whatsappSend } from "../tools/crm.js";
+import { whatsappSend, whatsappSendTemplate } from "../tools/crm.js";
+import { calendarEventInput } from "../tools/workspace.js";
+import { findApprovedTemplate, renderTemplateBody } from "../integrations/whatsapp/templates.js";
+import { IntegrationError, type OAuthService } from "../integrations/oauth/service.js";
 import { certificateRequest, studentMessage } from "../tools/education.js";
 import type { Tool } from "../tools/types.js";
 
@@ -23,6 +26,7 @@ export type ExecutionOutcome =
 export interface ExecutorDeps {
   db: Database;
   whatsapp: WhatsAppClient;
+  oauth?: OAuthService | null;
   now?: () => Date;
 }
 
@@ -32,7 +36,7 @@ export interface ExecutableApproval {
   editedPayload: Record<string, unknown> | null;
 }
 
-interface Executor {
+export interface Executor {
   tool: Tool<any, any>;
   run(payload: any, deps: ExecutorDeps, ctx: { edited: boolean }): Promise<ExecutionOutcome>;
 }
@@ -91,7 +95,70 @@ async function sendInConversation(deps: ExecutorDeps, conversationId: string, te
   return { status: "executed", result: { providerMessageId: res.providerMessageId, messageId: msg?.id ?? null, conversationId } };
 }
 
+/** Sends an approved template: no 24-hour limit, but the template must be APPROVED and the params must fit. */
+async function sendTemplate(deps: ExecutorDeps, p: { conversationId: string; template: string; language: string; params: string[] }): Promise<ExecutionOutcome> {
+  const { db, whatsapp } = deps;
+  const t = await findApprovedTemplate(db, p.template, p.language);
+  if (!t) return notExecuted("PRECONDITION", `Template "${p.template}" (${p.language}) isn't an approved, synced template. Sync templates on the Integrations page.`);
+  if (p.params.length !== t.bodyParams) return notExecuted("PRECONDITION", `Template "${p.template}" needs ${t.bodyParams} parameter(s); ${p.params.length} given.`);
+  const [row] = await db
+    .select({ channel: schema.conversations.channel, phone: schema.contacts.phone })
+    .from(schema.conversations)
+    .innerJoin(schema.contacts, eq(schema.contacts.id, schema.conversations.contactId))
+    .where(eq(schema.conversations.id, p.conversationId));
+  if (!row?.phone || row.channel !== "whatsapp") return notExecuted("PRECONDITION", "No WhatsApp conversation with a phone number.");
+  const missing = whatsapp.missing();
+  if (missing.length) return notExecuted("NOT_CONFIGURED", `WhatsApp sending is not configured. Set ${missing.join(", ")} in .env, then retry.`, { missing });
+  let res: Awaited<ReturnType<WhatsAppClient["sendTemplate"]>>;
+  try {
+    res = await whatsapp.sendTemplate(row.phone, p.template, p.language, p.params);
+  } catch (e) {
+    return { status: "unknown", message: `WhatsApp request failed before a response arrived (${(e as Error).message}). Check the chat before sending again.` };
+  }
+  if (res.status === "not_configured") return notExecuted("NOT_CONFIGURED", `WhatsApp sending is not configured. Set ${res.missing.join(", ")} in .env, then retry.`, { missing: res.missing });
+  if (res.status === "error") {
+    if (res.httpStatus >= 500) return { status: "unknown", message: `WhatsApp returned HTTP ${res.httpStatus}: ${res.message}. Check the chat before sending again.` };
+    return notExecuted("PROVIDER_REJECTED", `WhatsApp rejected the template: ${res.message}`, { httpStatus: res.httpStatus, code: res.code });
+  }
+  const [msg] = await db
+    .insert(schema.messages)
+    .values({ conversationId: p.conversationId, direction: "outbound", providerMessageId: res.providerMessageId, body: renderTemplateBody(t.body, p.params), status: "sent", sentBy: "agent" })
+    .onConflictDoNothing()
+    .returning({ id: schema.messages.id });
+  await db.update(schema.conversations).set({ lastMessageAt: new Date() }).where(eq(schema.conversations.id, p.conversationId));
+  return { status: "executed", result: { providerMessageId: res.providerMessageId, messageId: msg?.id ?? null, template: p.template } };
+}
+
 const EXECUTORS: Record<string, Executor> = {
+  [whatsappSendTemplate.name]: {
+    tool: whatsappSendTemplate,
+    run: (p: { conversationId: string; template: string; language: string; params: string[] }, deps) => sendTemplate(deps, p),
+  },
+  "google.calendar.create_event": {
+    tool: { name: "google.calendar.create_event", description: "", risk: "external", input: calendarEventInput, editableFields: ["summary", "description", "start", "end", "location"], run: async () => null },
+    async run(p: { summary: string; description?: string; start: string; end: string; attendees: string[]; location?: string }, deps) {
+      if (!deps.oauth) return notExecuted("NOT_CONFIGURED", "Google isn't configured on this server.");
+      try {
+        const e = await deps.oauth.request<{ id: string; htmlLink?: string }>("google", "https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all", {
+          method: "POST",
+          body: JSON.stringify({
+            summary: p.summary,
+            description: p.description,
+            location: p.location,
+            start: { dateTime: p.start, timeZone: "Asia/Karachi" },
+            end: { dateTime: p.end, timeZone: "Asia/Karachi" },
+            attendees: p.attendees.map((email) => ({ email })),
+          }),
+        });
+        return { status: "executed", result: { eventId: e.id, link: e.htmlLink ?? null } };
+      } catch (e) {
+        if (e instanceof IntegrationError && (e.code === "NOT_CONFIGURED" || e.code === "NOT_CONNECTED")) return notExecuted("NOT_CONFIGURED", e.message);
+        const status = (e as { httpStatus?: number }).httpStatus;
+        if (status && status < 500) return notExecuted("PROVIDER_REJECTED", (e as Error).message);
+        return { status: "unknown", message: `Google request failed: ${(e as Error).message}. Check the calendar before retrying.` };
+      }
+    },
+  },
   [whatsappSend.name]: {
     tool: whatsappSend,
     run: (p: { conversationId: string; text: string }, deps, { edited }) => sendInConversation(deps, p.conversationId, p.text, edited ? "user" : "agent"),
@@ -133,15 +200,22 @@ const EXECUTORS: Record<string, Executor> = {
   },
 };
 
+/** Executors added at runtime (e.g. approval-gated MCP tools from mcp.config.json). */
+const DYNAMIC = new Map<string, Executor>();
+
+export function registerExecutor(toolName: string, executor: Executor) {
+  DYNAMIC.set(toolName, executor);
+}
+
 export function executorFor(toolName: string): Executor | undefined {
-  return EXECUTORS[toolName];
+  return EXECUTORS[toolName] ?? DYNAMIC.get(toolName);
 }
 
 /** Tools whose approvals can be executed. Anything else is recorded as NO_EXECUTOR, never faked. */
-export const EXECUTABLE_TOOLS = Object.keys(EXECUTORS);
+export const EXECUTABLE_TOOLS = () => [...Object.keys(EXECUTORS), ...DYNAMIC.keys()];
 
 export async function runApprovedAction(toolName: string, approval: ExecutableApproval, deps: ExecutorDeps): Promise<ExecutionOutcome> {
-  const executor = EXECUTORS[toolName];
+  const executor = executorFor(toolName);
   if (!executor) return notExecuted("NO_EXECUTOR", `No executor is available for ${toolName} yet.`);
   const parsed = executor.tool.input.safeParse(approval.editedPayload ?? approval.payload);
   if (!parsed.success) return notExecuted("PRECONDITION", `Stored payload is invalid: ${parsed.error.issues.map((i) => i.message).join("; ")}`);

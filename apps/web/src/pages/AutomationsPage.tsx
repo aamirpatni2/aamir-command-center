@@ -77,7 +77,8 @@ function defaultTrigger(event: AutomationEvent): AutomationTrigger {
 function defaultAction(type: AutomationAction["type"]): AutomationAction {
   if (type === "agent_task") return { type, agent: "sales", instruction: "" };
   if (type === "whatsapp.draft") return { type, text: "" };
-  return { type, followUpInHours: 2 };
+  if (type === "whatsapp.template") return { type, template: "", language: "en", params: [] };
+  return { type: "lead.update", followUpInHours: 2 };
 }
 
 // ── Read-only flow: IF → AND → THEN ──────────────────────────────────────
@@ -100,6 +101,7 @@ function Chip({ children, tone }: { children: React.ReactNode; tone: "if" | "and
 function actionSummary(a: AutomationAction) {
   if (a.type === "agent_task") return <><AgentChip id={a.agent} withLabel={false} className="[&>span]:size-5 [&>span>svg]:size-3" />{agentMeta(a.agent).label} agent: task</>;
   if (a.type === "whatsapp.draft") return <><CheckSquare className="size-3.5 text-status-warning" aria-hidden />WhatsApp draft → approval</>;
+  if (a.type === "whatsapp.template") return <><CheckSquare className="size-3.5 text-status-warning" aria-hidden />Template “{a.template}” → approval</>;
   const parts = [a.status && `status → ${a.status}`, a.appendNote && "add note", a.followUpInHours !== undefined && `follow-up in ${a.followUpInHours}h`].filter(Boolean);
   return <>Update lead: {parts.join(", ")}</>;
 }
@@ -136,8 +138,15 @@ function FieldInsert({ event, onInsert }: { event: AutomationEvent; onInsert: (s
   );
 }
 
+interface SyncedTemplate { name: string; language: string; status: string; body: string | null; bodyParams: number }
+
 function Editor({ initial, id, agents, onDone }: { initial: RuleDefinition; id: string | null; agents: { id: string }[]; onDone: () => void }) {
   const qc = useQueryClient();
+  const templates = useQuery({
+    queryKey: ["integrations"],
+    queryFn: ({ signal }) => api<{ whatsappTemplates: SyncedTemplate[] }>("/api/integrations", { signal }),
+    select: (d) => d.whatsappTemplates.filter((t) => t.status === "APPROVED"),
+  });
   const [def, setDef] = useState<RuleDefinition>(initial);
   const [preview, setPreview] = useState<DryRunResult | null>(null);
   const event = def.trigger.event;
@@ -270,6 +279,38 @@ function Editor({ initial, id, agents, onDone }: { initial: RuleDefinition; id: 
                   <textarea aria-label="Message text" rows={3} className={fieldClass} value={a.text} placeholder="Assalam o Alaikum {{contact.name}}! …" onChange={(e) => setAction(i, { ...a, text: e.target.value })} />
                   <FieldInsert event={event} onInsert={(s) => setAction(i, { ...a, text: `${a.text}${s}` })} />
                   <p className="mt-1.5 text-xs text-status-warning">Never sent automatically: every draft waits in the Approval Center.</p>
+                </div>
+              )}
+              {a.type === "whatsapp.template" && (
+                <div className="mt-2 space-y-2">
+                  {templates.data?.length ? (
+                    <select aria-label="Template" className={fieldClass} value={`${a.template}|${a.language}`} onChange={(e) => {
+                      const [template, language] = e.target.value.split("|") as [string, string];
+                      const t = templates.data!.find((x) => x.name === template && x.language === language);
+                      setAction(i, { ...a, template, language, params: Array.from({ length: t?.bodyParams ?? 0 }, (_, k) => a.params[k] ?? "") });
+                    }}>
+                      <option value="|">Choose an approved template…</option>
+                      {templates.data.map((t) => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name} ({t.language}) · {t.bodyParams} param{t.bodyParams === 1 ? "" : "s"}</option>)}
+                    </select>
+                  ) : (
+                    <div className="grid gap-2 md:grid-cols-[1fr_8rem]">
+                      <input aria-label="Template name" className={fieldClass} placeholder="Template name (as in WhatsApp Manager)" value={a.template} onChange={(e) => setAction(i, { ...a, template: e.target.value })} />
+                      <input aria-label="Template language" className={fieldClass} placeholder="en" value={a.language} onChange={(e) => setAction(i, { ...a, language: e.target.value })} />
+                    </div>
+                  )}
+                  {(() => {
+                    const t = templates.data?.find((x) => x.name === a.template && x.language === a.language);
+                    return t?.body ? <p className="rounded-lg bg-surface-3 px-3 py-2 text-xs text-ink-2">{t.body}</p> : null;
+                  })()}
+                  {a.params.map((p, k) => (
+                    <input key={k} aria-label={`Parameter ${k + 1}`} className={fieldClass} placeholder={`{{${k + 1}}}`} value={p} onChange={(e) => setAction(i, { ...a, params: a.params.map((x, j) => (j === k ? e.target.value : x)) })} />
+                  ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {a.params.length < 10 && <button type="button" onClick={() => setAction(i, { ...a, params: [...a.params, ""] })} className="text-xs font-medium text-accent hover:underline">+ Parameter</button>}
+                    {a.params.length > 0 && <button type="button" onClick={() => setAction(i, { ...a, params: a.params.slice(0, -1) })} className="text-xs text-ink-3 hover:text-ink">− Remove last</button>}
+                  </div>
+                  <FieldInsert event={event} onInsert={(s) => a.params.length && setAction(i, { ...a, params: a.params.map((x, j) => (j === a.params.length - 1 ? `${x}${s}` : x)) })} />
+                  <p className="text-xs text-status-warning">Templates work outside WhatsApp's 24-hour window. Still never sent without your approval.{!templates.data?.length && " No approved templates synced yet (Integrations page)."}</p>
                 </div>
               )}
               {a.type === "lead.update" && (

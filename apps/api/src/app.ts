@@ -21,8 +21,12 @@ import { knowledgeRoutes } from "./routes/knowledge.js";
 import { whatsappWebhookRoutes } from "./routes/webhooks.js";
 import { approvalRoutes } from "./routes/approvals.js";
 import { automationRoutes } from "./routes/automations.js";
+import { integrationRoutes } from "./routes/integrations.js";
 import { TaskEventHub } from "./lib/task-events.js";
-import { createAutomationQueue, createTaskQueue, WhatsAppClient, type AutomationQueue, type TaskQueue } from "@acc/agents";
+import {
+  createAutomationQueue, createTaskQueue, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, WhatsAppClient,
+  type AutomationQueue, type TaskQueue,
+} from "@acc/agents";
 
 export interface BuildAppOptions {
   env: Env;
@@ -40,6 +44,10 @@ export interface BuildAppOptions {
   whatsapp?: WhatsAppClient;
   /** Defaults to the BullMQ automations queue. Tests inject an in-memory one. */
   automationQueue?: AutomationQueue;
+  /** Defaults to the servers in mcp.config.json. Tests inject their own. */
+  mcp?: McpClientManager;
+  /** Network for OAuth providers (tests inject a fake). */
+  oauthFetch?: typeof fetch;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -126,8 +134,17 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   await app.register(whatsappWebhookRoutes, { db, env, queue, automations });
   const whatsapp =
     opts.whatsapp ??
-    new WhatsAppClient({ accessToken: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID, graphVersion: env.WHATSAPP_GRAPH_VERSION });
-  await app.register(approvalRoutes, { db, whatsapp, events: hub });
+    new WhatsAppClient({ accessToken: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID, businessAccountId: env.WHATSAPP_BUSINESS_ACCOUNT_ID, graphVersion: env.WHATSAPP_GRAPH_VERSION });
+  const oauth = new OAuthService({ db, env, publicUrl: env.PUBLIC_URL, fetchImpl: opts.oauthFetch });
+  const mcp = opts.mcp ?? new McpClientManager(loadMcpConfig(defaultMcpConfigPath(REPO_ROOT, process.env)), { root: REPO_ROOT, log: (msg, meta) => app.log.info(meta, msg) });
+  // Approved MCP actions execute here (the API runs approvals); connecting happens in the background.
+  mcp.registerApprovalExecutors();
+  if (!opts.mcp) void mcp.start();
+  app.addHook("onClose", async () => {
+    await mcp.close();
+  });
+  await app.register(approvalRoutes, { db, whatsapp, oauth, events: hub });
+  await app.register(integrationRoutes, { db, env, oauth, mcp, whatsapp });
   await app.register(automationRoutes, { db, automations });
 
   return app;

@@ -5,3 +5,4 @@ export * from "./education.js";
 export * from "./content.js";
 export * from "./agents.js";
 export * from "./knowledge.js";
+export * from "./integrations.js";

@@ -25,6 +25,7 @@ import { KnowledgePage } from "./pages/KnowledgePage.js";
 import { ResearchPage } from "./pages/ResearchPage.js";
 import { ApprovalsPage } from "./pages/ApprovalsPage.js";
 import { AutomationsPage } from "./pages/AutomationsPage.js";
+import { IntegrationsPage } from "./pages/IntegrationsPage.js";
 import { ALL_NAV_ITEMS } from "./nav.js";
 import type { Permission } from "@acc/shared";
 
@@ -65,6 +66,7 @@ const READY: Record<string, ReactNode> = {
   "/research": <ResearchPage />,
   "/approvals": <ApprovalsPage />,
   "/automations": <AutomationsPage />,
+  "/mcp": <IntegrationsPage />,
 };
 
 export function App() {

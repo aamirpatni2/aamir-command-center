@@ -49,27 +49,27 @@ export const orchestratorReview: AgentDefinition = {
 
 export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
   sales: specialist("sales", "Lead qualification and pipeline: searches and reads leads and their conversations, explains scores, recommends courses, schedules follow-ups, updates lead status and notes.", {
-    tools: ["kb.search", "course.catalog", "crm.lead.search", "crm.lead.get", "crm.lead.update"],
+    tools: ["kb.search", "course.catalog", "crm.lead.search", "crm.lead.get", "crm.lead.update", "google.calendar.list_events", "google.gmail.create_draft"],
   }),
   whatsapp: specialist("whatsapp", "Reads WhatsApp conversations, classifies intent, flags hot leads, drafts replies (sent only after approval), updates the lead and schedules follow-ups.", {
-    tools: ["kb.search", "course.catalog", "conversation.read", "crm.lead.update", "whatsapp.send"],
-    limitations: "Approved replies are sent only when WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are configured, and only within 24 hours of the customer's last message (templates arrive with Milestone 11).",
+    tools: ["kb.search", "course.catalog", "conversation.read", "crm.lead.update", "whatsapp.send", "whatsapp.templates", "whatsapp.send_template"],
+    limitations: "Approved messages are sent only when WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID are configured. Outside the 24-hour window only approved templates can be sent (synced from WhatsApp Manager).",
   }),
   content: specialist("content", "Creates and saves content drafts: topic ideas, hooks, YouTube scripts, Facebook Reel scripts, captions, posts, carousels, AI image/video prompts and repurposing plans (Roman Urdu, Urdu, English), in Aamir's voice.", {
     effort: "high",
-    tools: ["kb.search", "course.catalog", "content.search", "content.save"],
+    tools: ["kb.search", "course.catalog", "content.search", "content.save", "google.drive.search", "canva.designs.list", "canva.designs.create"],
   }),
   research: specialist("research", "Researches AI tools, models, agentic AI, MCP and automation on the live web; verifies each claim against sources it actually opened; saves research reports; turns findings into teaching material.", {
     effort: "high",
-    tools: ["web.search", "web.fetch", "kb.search", "research.save"],
+    tools: ["web.search", "web.fetch", "kb.search", "research.save", "google.drive.search"],
     limitations: "Live web research needs BRAVE_API_KEY or TAVILY_API_KEY; without it the web tools report not_configured and every time-sensitive claim stays unverified.",
   }),
   student: specialist("student", "Student records: enrolment, attendance, assignments, payments and balances, recordings, reminders, certificate eligibility, support.", {
-    tools: ["kb.search", "course.catalog", "student.search", "student.get", "student.message", "certificate.request"],
-    limitations: "Messages and certificate requests go to approval. Approved messages need WhatsApp credentials and only reach students who wrote in the last 24 hours (templates arrive with Milestone 11).",
+    tools: ["kb.search", "course.catalog", "student.search", "student.get", "student.message", "certificate.request", "google.calendar.list_events", "google.calendar.create_event", "google.gmail.create_draft"],
+    limitations: "Messages, certificates and calendar invites go to approval. Messages need WhatsApp credentials and reach only students who wrote in the last 24 hours; Calendar and Gmail need Google connected.",
   }),
   marketing: specialist("marketing", "Campaign analysis, ad copy, hooks, creative ideas, audience hypotheses, performance summaries.", {
-    tools: ["kb.search", "course.catalog"],
+    tools: ["kb.search", "course.catalog", "canva.designs.list", "canva.designs.create", "google.gmail.create_draft"],
     limitations: "No ad account data yet (Milestone 12): analyses only numbers provided; never changes campaigns or budgets.",
   }),
   analytics: specialist("analytics", "Revenue, lead, conversion, course, content, campaign and agent analytics; daily/weekly reports.", {
@@ -77,7 +77,7 @@ export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
   }),
   course: specialist("course", "Course structure, lesson plans, teaching material, assignments, quizzes, course documentation, learning support.", {
     effort: "high",
-    tools: ["kb.search", "course.catalog"],
+    tools: ["kb.search", "course.catalog", "google.drive.search", "google.calendar.list_events"],
   }),
 };
 

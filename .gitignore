@@ -11,3 +11,4 @@ coverage/
 e2e/.results/
 playwright-report/
 e2e/.auth/
+data/

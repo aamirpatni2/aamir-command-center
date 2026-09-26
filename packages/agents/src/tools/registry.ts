@@ -13,6 +13,20 @@ const DEFAULT_TIMEOUT_MS = 30_000;
  */
 export class ToolRegistry {
   private readonly tools = new Map<string, Tool<any, any>>();
+  private readonly grants = new Map<string, Set<string>>();
+
+  /** Extra tools for an agent beyond its definition (e.g. allow-listed MCP tools from mcp.config.json). */
+  grant(agentId: string, names: readonly string[]): this {
+    const set = this.grants.get(agentId) ?? new Set<string>();
+    for (const n of names) set.add(n);
+    this.grants.set(agentId, set);
+    return this;
+  }
+
+  /** The agent's own tools plus granted ones. */
+  allowedFor(agentId: string, base: readonly string[]): string[] {
+    return [...new Set([...base, ...(this.grants.get(agentId) ?? [])])];
+  }
 
   register(...tools: Tool<any, any>[]): this {
     for (const t of tools) {
@@ -28,15 +42,16 @@ export class ToolRegistry {
 
   /** Model-facing specs for the tools an agent may use. Unknown names are a config error. */
   specsFor(allowed: readonly string[]): ToolSpec[] {
-    return allowed.map((name) => {
+    return allowed.flatMap((name) => {
       const t = this.tools.get(name);
       if (!t) throw new Error(`Agent is granted unknown tool "${name}"`);
-      const jsonSchema = z.toJSONSchema(t.input, { target: "draft-7", io: "input" }) as Record<string, unknown>;
+      if (t.available && !t.available()) return [];
+      const jsonSchema = t.jsonSchema ? t.jsonSchema() : (z.toJSONSchema(t.input, { target: "draft-7", io: "input" }) as Record<string, unknown>);
       delete jsonSchema.$schema;
       const note = APPROVAL_REQUIRED_RISKS.includes(t.risk)
         ? " This action needs human approval: calling it submits a request to the Approval Center instead of running immediately."
         : "";
-      return { name, description: t.description + note, inputSchema: jsonSchema };
+      return [{ name, description: t.description + note, inputSchema: jsonSchema }];
     });
   }
 
@@ -53,6 +68,10 @@ export class ToolRegistry {
         metadata: { tool: call.name },
       });
       return { status: "error", code: "NOT_ALLOWED", message: `Tool "${call.name}" is not permitted for the ${ctx.agentId} agent` };
+    }
+
+    if (tool.available && !tool.available()) {
+      return { status: "error", code: "FAILED", message: `Tool ${call.name} is currently unavailable (its integration is not connected)` };
     }
 
     const parsed = tool.input.safeParse(call.input);

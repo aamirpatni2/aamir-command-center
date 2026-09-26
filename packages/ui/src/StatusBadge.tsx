@@ -59,7 +59,16 @@ const STATUS: Record<string, StatusDef> = {
   eligible: { tone: "good", icon: CheckCircle2, label: "Eligible" },
   not_eligible: { tone: "neutral", icon: CircleDashed, label: "Not eligible" },
   issued: { tone: "good", icon: CheckCircle2, label: "Certificate issued" },
-  connected: { tone: "good", icon: CheckCircle2, label: "Configured" },
+  connected: { tone: "good", icon: CheckCircle2, label: "Connected" },
+  mock: { tone: "warning", icon: AlertTriangle, label: "Mock mode" },
+  connecting: { tone: "info", icon: Loader2, label: "Connecting" },
+  error: { tone: "critical", icon: XCircle, label: "Error" },
+  revoked: { tone: "neutral", icon: CircleDashed, label: "Revoked" },
+  APPROVED: { tone: "good", icon: CheckCircle2, label: "Approved" },
+  PENDING: { tone: "warning", icon: PauseCircle, label: "In review at Meta" },
+  REJECTED: { tone: "critical", icon: XCircle, label: "Rejected by Meta" },
+  PAUSED: { tone: "neutral", icon: PauseCircle, label: "Paused" },
+  DISABLED: { tone: "neutral", icon: CircleDashed, label: "Disabled" },
   not_configured: { tone: "neutral", icon: CircleDashed, label: "Not configured" },
 };
 

@@ -175,4 +175,38 @@ export const whatsappSend: Tool<z.infer<typeof whatsappSendInput>, unknown> = {
   },
 };
 
-export const CRM_TOOLS = [conversationRead, leadSearch, leadGet, leadUpdate, whatsappSend];
+const templateSendInput = z.object({
+  conversationId: z.string().uuid(),
+  template: z.string().min(1).max(512),
+  language: z.string().min(2).max(15),
+  params: z.array(z.string().min(1).max(1000)).max(20).default([]),
+});
+export const whatsappSendTemplate: Tool<z.infer<typeof templateSendInput>, unknown> = {
+  name: "whatsapp.send_template",
+  description:
+    "Send an approved WhatsApp message template (use whatsapp.templates to see them). Templates work outside the 24-hour window, e.g. for follow-ups. params fill {{1}}, {{2}}, … in order.",
+  risk: "external",
+  input: templateSendInput,
+  describe: (i) => `Send WhatsApp template "${i.template}" (${i.language})${i.params.length ? ` with ${i.params.join(" · ").slice(0, 80)}` : ""}`,
+  supersedeKey: (i) => ({ field: "conversationId", value: i.conversationId }),
+  editableFields: ["params"],
+  async run() {
+    throw new Error("whatsapp.send_template executes only through the Approval Center");
+  },
+};
+
+export const whatsappTemplates: Tool<Record<string, never>, unknown> = {
+  name: "whatsapp.templates",
+  description: "List the APPROVED WhatsApp message templates (name, language, body with {{n}} placeholders, number of params).",
+  risk: "read",
+  input: z.object({}).strict(),
+  async run(_i, { db }) {
+    const rows = await db
+      .select({ name: schema.whatsappTemplates.name, language: schema.whatsappTemplates.language, category: schema.whatsappTemplates.category, body: schema.whatsappTemplates.body, params: schema.whatsappTemplates.bodyParams })
+      .from(schema.whatsappTemplates)
+      .where(eq(schema.whatsappTemplates.status, "APPROVED"));
+    return rows.length ? { templates: rows } : { templates: [], note: "No approved templates synced. Outside the 24-hour window nothing can be sent until Aamir creates and syncs templates." };
+  },
+};
+
+export const CRM_TOOLS = [conversationRead, leadSearch, leadGet, leadUpdate, whatsappSend, whatsappSendTemplate, whatsappTemplates];

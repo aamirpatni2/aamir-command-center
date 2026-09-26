@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
   ApprovalError, approveApproval, editableFieldsFor, editApproval, executeApproval, expireStaleApprovals, rejectApproval,
-  type ApprovalDeps, type ApprovalRow, type TaskEventSink, type WhatsAppClient,
+  type ApprovalDeps, type ApprovalRow, type OAuthService, type TaskEventSink, type WhatsAppClient,
 } from "@acc/agents";
 import { desc, eq, inArray, schema, sql, type Database } from "@acc/database";
 import { APPROVAL_STATUSES, hasPermission, type Role } from "@acc/shared";
@@ -52,7 +52,7 @@ async function loadContext(db: Database, rows: ApprovalRow[]): Promise<Map<strin
   const enrollmentIds = new Set<string>();
   for (const r of rows) {
     const p = eff(r);
-    if (r.toolName === "whatsapp.send" && p.conversationId) convIds.add(p.conversationId);
+    if ((r.toolName === "whatsapp.send" || r.toolName === "whatsapp.send_template") && p.conversationId) convIds.add(p.conversationId);
     if (r.toolName === "student.message" && p.studentId) studentIds.add(p.studentId);
     if (r.toolName === "certificate.request" && p.enrollmentId) enrollmentIds.add(p.enrollmentId);
   }
@@ -101,7 +101,7 @@ async function loadContext(db: Database, rows: ApprovalRow[]): Promise<Map<strin
   };
   for (const r of rows) {
     const p = eff(r);
-    if (r.toolName === "whatsapp.send") out.set(r.id, withConv(p.conversationId));
+    if (r.toolName === "whatsapp.send" || r.toolName === "whatsapp.send_template") out.set(r.id, withConv(p.conversationId));
     else if (r.toolName === "student.message") {
       const s = students.find((x) => x.studentId === p.studentId);
       out.set(r.id, { contactName: s?.name ?? null, contactPhone: s?.phone ?? null, studentId: p.studentId ?? null, ...withConv(s?.conversationId) });
@@ -113,9 +113,9 @@ async function loadContext(db: Database, rows: ApprovalRow[]): Promise<Map<strin
   return out;
 }
 
-export async function approvalRoutes(app: FastifyInstance, opts: { db: Database; whatsapp: WhatsAppClient; events: TaskEventSink }) {
+export async function approvalRoutes(app: FastifyInstance, opts: { db: Database; whatsapp: WhatsAppClient; oauth?: OAuthService; events: TaskEventSink }) {
   const { db } = opts;
-  const deps: ApprovalDeps = { db, whatsapp: opts.whatsapp, events: { publish: (e) => opts.events.publish(e).catch(() => {}) } };
+  const deps: ApprovalDeps = { db, whatsapp: opts.whatsapp, oauth: opts.oauth ?? null, events: { publish: (e) => opts.events.publish(e).catch(() => {}) } };
   const actor = (req: FastifyRequest) => ({ ...auditMeta(req), actorId: req.auth!.user.id });
 
   const present = async (rows: ApprovalRow[], role: Role) => {

@@ -52,6 +52,14 @@
 - Emitting an event never fails the request that caused it (webhook, lead create, payment verify).
 - Audit: `automation.create/update/enable/disable/delete/run_now`, `automation.run.<status>`, `automation.rate_limited`, plus `lead.update` / `approval.requested` for what a run did.
 
+## 2d. Integrations & MCP (as built, M11)
+- MCP servers exist only in `mcp.config.json` (a stdio server runs a program, so never configurable from the UI). Only allow-listed tools are exposed, each with an explicit risk and agent list; server "read-only" hints are displayed, never trusted. Stdio servers get a minimal environment (PATH, HOME + explicit vars), not the app's secrets. Tool output is labelled external data. Calls time out (30 s); a down server hides its tools instead of breaking agents.
+- OAuth: owner-only; single-use 10-minute `state` authenticates the callback (the SameSite=Strict session cookie isn't sent on the provider's redirect); PKCE for Canva; tokens encrypted at rest (AES-256-GCM), refreshed automatically, revoked on disconnect; a revoked grant marks the connection for reconnect.
+- Least privilege: Drive read-only, Gmail compose (drafts only, never send), Calendar events (creation with invites needs approval), Canva design read/write (drafts, no publishing).
+- Gmail drafts: header values can't contain newlines (no header injection); non-ASCII subjects are RFC 2047 encoded.
+- WhatsApp templates: only APPROVED, synced templates with the right parameter count can be sent, always after approval.
+- The Integrations page shows which variables are set, never their values (tested).
+
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.

@@ -28,6 +28,10 @@ export interface Tool<I = unknown, O = unknown> {
   editableFields?: readonly string[];
   run(input: I, ctx: ToolContext): Promise<O>;
   timeoutMs?: number;
+  /** Raw JSON Schema for the model (MCP tools bring their own); otherwise derived from `input`. */
+  jsonSchema?: () => Record<string, unknown>;
+  /** When false the tool is hidden from agents and refused (e.g. its MCP server is down). */
+  available?: () => boolean;
 }
 
 export type ToolOutcome =

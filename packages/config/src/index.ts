@@ -53,6 +53,16 @@ export const envSchema = z
     /** Wait this long after a message before triage, so bursts of messages are handled together. */
     WHATSAPP_TRIAGE_DELAY_SECONDS: z.coerce.number().int().min(0).max(3600).default(45),
 
+    /** Public base URL of the dashboard (OAuth redirects come back to <PUBLIC_URL>/api/integrations/oauth/callback). */
+    PUBLIC_URL: z.string().url().default("http://localhost:5173"),
+    GOOGLE_CLIENT_ID: optionalString,
+    GOOGLE_CLIENT_SECRET: optionalString,
+    CANVA_CLIENT_ID: optionalString,
+    CANVA_CLIENT_SECRET: optionalString,
+    /** Read by mcp.config.json (${env:GITHUB_TOKEN}); fine-grained, read-only. */
+    GITHUB_TOKEN: optionalString,
+    MCP_CONFIG: optionalString,
+
     BRAVE_API_KEY: optionalString,
     TAVILY_API_KEY: optionalString,
     VOYAGE_API_KEY: optionalString,

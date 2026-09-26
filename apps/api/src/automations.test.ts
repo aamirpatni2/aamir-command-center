@@ -232,6 +232,16 @@ describe("engine", () => {
     await ctx.handle.db.update(schema.automationRules).set({ enabled: false }).where(eq(schema.automationRules.id, r.id));
   });
 
+  it("template actions prepare an approval with rendered parameters (never sent directly)", async () => {
+    const r = await rule({ name: "Template", trigger: { event: "lead.created" }, actions: [{ type: "whatsapp.template", template: "follow_up", language: "en", params: ["{{contact.name|there}}", "1 November"] }] });
+    const l = await leadWithChat(20);
+    const [out] = await handleEvent(engine, "lead.created", { leadId: l.leadId });
+    expect(out!.outcome).toMatchObject({ status: "completed", actions: [{ type: "whatsapp.template", status: "ok" }] });
+    const mine = (await ctx.handle.db.select().from(schema.approvals)).find((a) => a.toolName === "whatsapp.send_template" && (a.payload as { conversationId: string }).conversationId === l.conversationId)!;
+    expect(mine).toMatchObject({ status: "pending", payload: { template: "follow_up", language: "en", params: [`Auto ${seq}`, "1 November"] } });
+    await ctx.handle.db.update(schema.automationRules).set({ enabled: false }).where(eq(schema.automationRules.id, r.id));
+  });
+
   it("rate limit: extra firings in the hour are logged and do nothing", async () => {
     const r = await rule({ name: "Limited", trigger: { event: "lead.created" }, maxRunsPerHour: 2, actions: [{ type: "lead.update", appendNote: "limited" }] });
     const leads = [await leadWithChat(20), await leadWithChat(20), await leadWithChat(20)];

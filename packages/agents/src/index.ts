@@ -24,7 +24,15 @@ import type { Embedder } from "@acc/database";
 import type { WebSearchProvider } from "./integrations/web/search.js";
 import type { Resolver } from "./integrations/web/fetch.js";
 
+import { makeWorkspaceTools } from "./tools/workspace.js";
+import type { OAuthService } from "./integrations/oauth/service.js";
+import type { McpClientManager } from "./mcp/manager.js";
+
 export interface ToolRegistryOptions {
+  /** Google / Canva tools use it; without it they report not_connected. */
+  oauth?: OAuthService | null;
+  /** Allow-listed MCP tools are registered and granted per agent (mcp.config.json). */
+  mcp?: McpClientManager | null;
   webSearch?: WebSearchProvider | null;
   embedder?: Embedder | null;
   /** For tests: fake network and DNS for web.fetch. */
@@ -34,7 +42,7 @@ export interface ToolRegistryOptions {
 
 /** Registry with every production tool registered. Integrations that aren't configured report not_configured. */
 export function createDefaultToolRegistry(opts: ToolRegistryOptions = {}): ToolRegistry {
-  return new ToolRegistry().register(
+  const registry = new ToolRegistry().register(
     makeKbSearch(opts.embedder ?? null),
     memoryPropose,
     ...CRM_TOOLS,
@@ -43,7 +51,13 @@ export function createDefaultToolRegistry(opts: ToolRegistryOptions = {}): ToolR
     makeWebSearch(opts.webSearch ?? null),
     makeWebFetch({ enabled: !!opts.webSearch, fetchImpl: opts.fetchImpl, resolve: opts.resolve }),
     researchSave,
+    ...makeWorkspaceTools(opts.oauth ?? null),
   );
+  if (opts.mcp) {
+    registry.register(...opts.mcp.tools());
+    for (const [agent, names] of opts.mcp.grants()) registry.grant(agent, names);
+  }
+  return registry;
 }
 export { makeKbSearch, makeWebFetch, makeWebSearch, researchSave } from "./tools/research.js";
 export * from "./integrations/web/search.js";
@@ -63,3 +77,8 @@ export { isPresetPlan, type PresetPlan } from "./orchestration/orchestrate.js";
 export * from "./approvals/executors.js";
 export * from "./approvals/service.js";
 export * from "./automations/engine.js";
+export * from "./mcp/config.js";
+export * from "./mcp/manager.js";
+export * from "./integrations/oauth/service.js";
+export * from "./integrations/whatsapp/templates.js";
+export { makeWorkspaceTools, buildMime } from "./tools/workspace.js";
