@@ -167,3 +167,15 @@ Each decision lists the alternatives and why the simplest production-ready optio
 
 ## ADR-046 — CI runs everything with mocks, against real Postgres and Redis
 CI (`.github/workflows/ci.yml`) uses service containers (pgvector/pgvector:pg16, redis:7) rather than mocking the database or queue, because most bugs found so far were in SQL, time zones and queue behaviour. It never receives real API keys: agents use the mock model and every integration reports "not configured", so a CI run can never send a message or spend money. `pnpm security` (secret scan + dependency audit) is blocking; a new upstream advisory can turn CI red without a code change, which is intended.
+
+## ADR-047 — One server, Docker Compose, Caddy for HTTPS
+A single VPS running `deploy/docker-compose.yml` (Caddy → API + dashboard, worker, Postgres/pgvector, Redis, backups) instead of several managed services. For one business owner this is the cheapest setup that is still fully under his control, backups included, and Caddy removes certificate work entirely. The image is platform-neutral, so moving to managed Postgres/Redis later needs no code change (docs/DEPLOYMENT.md, "Managed alternative").
+
+## ADR-048 — The API serves the dashboard (one origin) with a strict CSP
+In production the API serves `apps/web/dist`. One origin keeps the SameSite=Strict session cookie and CSRF model simple (no CORS, no cross-site cookies) and lets the HTML carry a strict policy: `script-src 'self'`, `style-src 'self'`, `connect-src 'self'`, no eval. React style props go through the CSSOM, which CSP doesn't restrict; Zod's `Function("")` speed probe is switched off in the browser (`@acc/shared/zod-csp`, imported first). `e2e/csp.spec.ts` visits every page and fails on any violation.
+
+## ADR-049 — Least-privilege database role; migrations as the owner
+The app connects as `acc_app` (SELECT/INSERT/UPDATE/DELETE; no UPDATE/DELETE on `audit_logs`; no DDL or TRUNCATE). Migrations run as the owner and re-grant on every run (plus default privileges for new tables). Production API and worker refuse to start as a superuser or table owner, because an owner could drop the audit-log trigger. `APP_DB_PASSWORD` is hex so it is safe inside connection URLs.
+
+## ADR-050 — Rate limits and throttles in Redis
+Failed-login counts, the agent-run budget and the global API limit are sliding windows in Redis (atomic Lua script), so a restart doesn't reset them and several API instances share them. The global limit counts per signed-in user (an office behind one IP shouldn't share a budget), per IP when signed out; it skips rather than blocks if Redis is briefly unreachable. Limits are configurable (`RATE_LIMIT_PER_MINUTE`, `LOGIN_IP_LIMIT`); dev and CI raise them because every test session comes from 127.0.0.1.

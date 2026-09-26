@@ -23,7 +23,7 @@ test("knowledge: draft is invisible to agents until approved", async ({ page }, 
   await page.screenshot({ path: `e2e/.results/knowledge-${info.project.name}.png`, fullPage: true });
 });
 
-test("research: report shows claims, and unbacked 'verified' claims are downgraded", async ({ page }, info) => {
+test("research: report shows claims, and unbacked 'verified' claims are downgraded", { tag: "@model" }, async ({ page }, info) => {
   await page.goto("/tasks");
   await page.getByLabel("New task").fill("Research the latest news about MCP servers for a class");
   await page.getByRole("button", { name: "Run task" }).click();

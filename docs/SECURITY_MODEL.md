@@ -66,7 +66,7 @@
 - "Needs you" shows names/phones to roles that can already read leads (`analytics:read`).
 
 ## 2f. Hardening (as built, M13)
-- Audit log append-only enforced by a database trigger (UPDATE/DELETE/TRUNCATE refused for every role). Next step (M15): the app connects as a non-owner role so it can't drop the trigger.
+- Audit log append-only enforced by a database trigger (UPDATE/DELETE/TRUNCATE refused for every role). In production the app connects as the least-privilege `acc_app` role (rows only: no DDL, no TRUNCATE, no UPDATE/DELETE on `audit_logs`), migrations run as the owner, and the API and worker refuse to start as the owner or a superuser.
 - Route sweep test: every registered route is checked for session, CSRF and viewer-can't-mutate; new routes are covered automatically.
 - Agent-run budget: 60 runs per user per hour across all endpoints that start agents (cost control).
 - `pnpm security` = secret scan of tracked files + dependency audit. Full checklist: docs/SECURITY_CHECKLIST.md.
@@ -74,7 +74,7 @@
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.
-- Login throttling: 5 **failed** attempts / 15 min per IP + email → 429 with `Retry-After` (a successful login resets the counter and never counts, so the owner can't lock themselves out by signing in often), plus a coarse cap of 30 login requests / 15 min per IP against spraying many emails. The failure counter is in-memory (one API instance); it moves to Redis when the API scales out. Generic error message (no user enumeration). Timing kept equal with a dummy hash when the user doesn't exist.
+- Login throttling: 5 **failed** attempts / 15 min per IP + email → 429 with `Retry-After` (a successful login resets the counter and never counts, so the owner can't lock themselves out by signing in often), plus a coarse cap of 30 login requests / 15 min per IP against spraying many emails. The counters live in Redis (atomic sliding window), so they survive restarts and are shared by API instances. The global API limit (default 300/min) counts per signed-in user, per IP when signed out. Generic error message (no user enumeration). Timing kept equal with a dummy hash when the user doesn't exist.
 - First owner account is created by the CLI (`pnpm db:create-owner`), never through an open sign-up endpoint. There is no public registration.
 
 ## 4. Authorization (RBAC)

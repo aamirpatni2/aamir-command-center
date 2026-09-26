@@ -13,3 +13,5 @@ playwright-report/
 e2e/.auth/
 data/
 logs/
+deploy/app.env
+deploy/backups/

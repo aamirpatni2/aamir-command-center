@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.skip(!process.env.E2E_EMAIL, "set E2E_EMAIL and E2E_PASSWORD");
 
 // Requires the worker running. With no ANTHROPIC_API_KEY, ACC_ENABLE_MOCKS=true must be set (dev only).
-test("run a task end-to-end and see it in Agent Activity", async ({ page }, info) => {
+test("run a task end-to-end and see it in Agent Activity", { tag: "@model" }, async ({ page }, info) => {
 
   await page.goto("/tasks");
   await page.getByLabel("New task").fill("Find today's important AI developments and turn them into three Reel ideas.");

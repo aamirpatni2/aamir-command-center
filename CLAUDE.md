@@ -8,7 +8,8 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 - `pnpm install` · `pnpm typecheck` · `pnpm test` (needs Postgres; test DB `acc_test`)
 - `pnpm db:generate` (after schema edits) · `pnpm db:migrate` · `pnpm db:create-owner`
 - `pnpm dev:api` → http://localhost:4000 · `pnpm dev:worker` (agent tasks) · `pnpm dev:web` → http://localhost:5173 · local services: `docker compose up -d`
-- `pnpm e2e` (Playwright; needs API + web running and `E2E_EMAIL`/`E2E_PASSWORD`)
+- `pnpm e2e` (Playwright; needs API + web running and `E2E_EMAIL`/`E2E_PASSWORD`). Specs must create their own data. Tag specs that need an AI model `{ tag: "@model" }` (production has no mock model; the CI `stack` job runs `--grep-invert @model`).
+- Production: `docker build .` · `deploy/` (compose, Caddy, backups) · docs/DEPLOYMENT.md
 
 ## Layout
 `apps/api` Fastify API · `apps/web` React dashboard · `apps/worker` jobs ·
@@ -23,6 +24,9 @@ Read `docs/ARCHITECTURE.md` first; the current milestone is in `docs/IMPLEMENTAT
 - Write an audit log (`writeAudit`) for auth, user, approval, external and destructive actions.
 - Schema changes: edit `packages/database/src/schema/*`, run `pnpm db:generate`, commit the SQL. Never edit applied migrations.
 - Correlated SQL sub-queries: write the outer column fully qualified (`"table"."col"`), never `${schema.table.col}` — drizzle renders it bare (`"id"`) in single-table selects, which silently binds to the inner table.
+- The app runs as a least-privilege DB role in production: runtime code must never need DDL, TRUNCATE, or UPDATE/DELETE on `audit_logs`.
+- The dashboard runs under a strict CSP: no inline scripts, `eval`/`new Function`, third-party script/style/font URLs, or `<style>` injection. `@acc/shared/zod-csp` must stay the first import in `apps/web/src/main.tsx`.
+- Throttles use `WindowStore` (Redis in production), never in-process maps.
 - Record significant design choices in `docs/DECISIONS.md`.
 - Every milestone ends with: tests green, docs updated, report COMPLETED / TESTED / ISSUES / NEXT.
 

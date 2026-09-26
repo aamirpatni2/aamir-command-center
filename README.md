@@ -30,8 +30,11 @@ pnpm whatsapp:simulate --name "Ali" "Salam, fee kitni hai?"   # signed test mess
 
 Every push runs CI (GitHub Actions): typecheck, `pnpm security`, unit tests on Postgres + Redis, and the Playwright suite. No real API keys are used; agents run on the mock model.
 
+## Deploying
+One server with Docker: `cd deploy && ./generate-env.sh && docker compose up -d --build`. HTTPS, backups and least-privilege database access included. Step by step: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## Docs
 - [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Security model](docs/SECURITY_MODEL.md) · [Agent architecture](docs/AGENT_ARCHITECTURE.md)
 - [MCP architecture](docs/MCP_ARCHITECTURE.md) · [MCP servers](docs/MCP_SERVERS.md)
-- [Database design](docs/DATABASE_DESIGN.md) · [API](docs/API.md)
+- [Database design](docs/DATABASE_DESIGN.md) · [API](docs/API.md) · [Deployment](docs/DEPLOYMENT.md)

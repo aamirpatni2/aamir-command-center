@@ -8,7 +8,7 @@ test.skip(!process.env.E2E_EMAIL, "set E2E_EMAIL and E2E_PASSWORD");
 const API = process.env.E2E_API_URL ?? "http://localhost:4000";
 const SECRET = process.env.E2E_WHATSAPP_APP_SECRET ?? "dev-local-secret";
 
-test("approval center: edit, approve (not configured → nothing sent), cancel", async ({ page, request }, info) => {
+test("approval center: edit, approve (not configured → nothing sent), cancel", { tag: "@model" }, async ({ page, request }, info) => {
   const stamp = Date.now().toString().slice(-7);
   const name = `E2E Approval ${stamp}`;
   const from = `92311${stamp}`;

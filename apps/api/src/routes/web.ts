@@ -34,16 +34,18 @@ export async function registerWeb(app: FastifyInstance, dir: string) {
   if (!existsSync(resolve(root, "index.html"))) throw new Error(`WEB_DIST_DIR has no index.html: ${root} (run pnpm build:web)`);
 
   const sendIndex = (reply: FastifyReply) =>
-    reply.header("content-security-policy", WEB_CSP).header("cache-control", "no-cache").type("text/html; charset=utf-8").sendFile("index.html", root);
+    reply.header("content-security-policy", WEB_CSP).type("text/html; charset=utf-8").sendFile("index.html", root);
 
   await app.register(fastifyStatic, {
     root,
     index: false,
     wildcard: false,
     cacheControl: false, // we set it ourselves below
-    setHeaders(res, path) {
-      // Vite fingerprints everything under /assets: cache forever. Anything else briefly.
-      res.setHeader("cache-control", path.startsWith(resolve(root, "assets")) ? "public, max-age=31536000, immutable" : "public, max-age=3600");
+    setHeaders(reply, path) {
+      // The app shell is revalidated on every load, so a new release shows up at once; Vite
+      // fingerprints everything under /assets (cache forever); anything else briefly.
+      const cache = path === resolve(root, "index.html") ? "no-cache" : path.startsWith(resolve(root, "assets")) ? "public, max-age=31536000, immutable" : "public, max-age=3600";
+      reply.header("cache-control", cache);
     },
   });
   app.get("/", async (_req, reply) => sendIndex(reply));

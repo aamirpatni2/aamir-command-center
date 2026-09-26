@@ -32,12 +32,12 @@
     "@playwright/test": "~1.56.1",
     "@types/node": "^22.10.0",
     "@vitest/coverage-v8": "4.1.11",
-    "tsx": "^4.20.0",
     "typescript": "~5.9.0",
     "vitest": "^4.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/server-filesystem": "2026.8.31"
+    "@modelcontextprotocol/server-filesystem": "2026.8.31",
+    "tsx": "^4.20.0"
   },
   "pnpm": {
     "overrides": {

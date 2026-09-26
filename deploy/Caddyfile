@@ -1,0 +1,16 @@
+# HTTPS in front of the API (which also serves the dashboard). Caddy gets and renews the
+# certificate automatically once DNS for SITE_ADDRESS points at this server.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	# Uploads are limited in the API; this is a backstop.
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy api:4000 {
+		header_up X-Request-Id {http.request.uuid}
+	}
+	log {
+		output stdout
+		format console
+	}
+}

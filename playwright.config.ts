@@ -6,6 +6,8 @@ const STATE = "e2e/.auth/owner.json";
 const common = {
   baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5173",
   colorScheme: "dark" as const,
+  // For a local production stack on https://localhost (Caddy's internal certificate).
+  ignoreHTTPSErrors: !!process.env.E2E_IGNORE_HTTPS_ERRORS,
   launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
 };
 

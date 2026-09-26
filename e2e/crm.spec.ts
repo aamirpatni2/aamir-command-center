@@ -8,7 +8,7 @@ const SECRET = process.env.E2E_WHATSAPP_APP_SECRET ?? "dev-local-secret";
 
 // Self-contained: sends its own signed WhatsApp messages, so it runs on an empty database.
 // Needs the API and worker (mock model) running.
-test("leads and WhatsApp inbox", async ({ page, request }, info) => {
+test("leads and WhatsApp inbox", { tag: "@model" }, async ({ page, request }, info) => {
   const digits = Date.now().toString().slice(-7);
   const from = `92345${digits}`;
   const name = `Ayesha Siddiqui ${digits}`;

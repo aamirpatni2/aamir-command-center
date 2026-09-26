@@ -133,3 +133,81 @@ jobs:
           name: playwright-results
           path: e2e/.results/
           retention-days: 7
+
+  stack:
+    name: Production stack (Docker, HTTPS, backups)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      E2E_EMAIL: stack-owner@example.test
+      E2E_PASSWORD: stack-owner-password-for-ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t aamir-command-center:latest .
+      - name: Stack settings (localhost; Caddy's internal certificate)
+        working-directory: deploy
+        run: |
+          DOMAIN=localhost ./generate-env.sh
+          # Test-only additions: a known webhook secret and higher limits (one account, many parallel tests).
+          printf "WHATSAPP_APP_SECRET=dev-local-secret\nWHATSAPP_TRIAGE_DELAY_SECONDS=3\n" >> app.env
+          sed -i "s|^RATE_LIMIT_PER_MINUTE=.*|RATE_LIMIT_PER_MINUTE=5000|; s|^LOGIN_IP_LIMIT=.*|LOGIN_IP_LIMIT=1000|" app.env
+      - name: Start the stack
+        working-directory: deploy
+        run: |
+          docker compose up -d --no-build --wait --wait-timeout 180 postgres redis api worker caddy backup
+          docker compose ps -a
+          docker compose logs migrate | tail -3
+          curl -skf https://localhost/api/health
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost/)" = "308"
+      - name: The app runs as the least-privilege role
+        working-directory: deploy
+        run: |
+          set -a; . ./.env; set +a
+          docker compose exec -T postgres psql -U acc_owner -d acc -tAc "select string_agg(distinct usename, ',') from pg_stat_activity where datname = 'acc' and usename <> 'acc_owner'" | grep -x acc_app
+          # Pointed at the owner account, the API must refuse to start.
+          (docker compose run --rm --no-deps -e DATABASE_URL="postgres://acc_owner:${POSTGRES_PASSWORD}@postgres:5432/acc" api 2>&1 || true) | grep "Refusing to start"
+      - name: Create the owner account
+        working-directory: deploy
+        run: docker compose run --rm --no-deps -e OWNER_EMAIL="$E2E_EMAIL" -e OWNER_NAME="CI Owner" -e OWNER_PASSWORD="$E2E_PASSWORD" api node --import tsx packages/database/scripts/create-owner.ts
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD= pnpm exec playwright install --with-deps chromium
+      - name: Playwright over HTTPS (no model key in production, so @model tests are skipped)
+        env:
+          E2E_BASE_URL: https://localhost
+          E2E_API_URL: https://localhost
+          E2E_IGNORE_HTTPS_ERRORS: "1"
+          E2E_EXPECT_CSP: "1"
+        run: pnpm e2e --grep-invert @model
+      - name: Backup and restore
+        working-directory: deploy
+        run: |
+          q() { docker compose exec -T postgres psql -U acc_owner -d acc -tAc "$1"; }
+          before=$(q "select count(*) from contacts")
+          test "$before" -gt 0
+          ./backup-now.sh
+          dump="backups/$(cat backups/.last)"
+          q "truncate courses, contacts cascade"
+          test "$(q 'select count(*) from contacts')" = "0"
+          RESTORE_CONFIRM=yes ./restore.sh "$dump"
+          test "$(q 'select count(*) from contacts')" = "$before"
+          sleep 5
+          curl -skf -X POST https://localhost/api/auth/login -H 'content-type: application/json' \
+            -d "{\"email\":\"$E2E_EMAIL\",\"password\":\"$E2E_PASSWORD\"}" -o /dev/null
+          test "$(q "select has_table_privilege('acc_app', 'audit_logs', 'UPDATE')")" = "f"
+      - name: Stack logs
+        if: failure()
+        working-directory: deploy
+        run: docker compose logs --tail 150
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: stack-playwright-results
+          path: e2e/.results/
+          retention-days: 7

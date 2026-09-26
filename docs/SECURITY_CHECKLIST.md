@@ -14,7 +14,7 @@ Run locally: `pnpm security` (secret scan + dependency audit), `pnpm test` (incl
 | Change password requires the current one and signs out all other sessions | ✅ | `route-security.test.ts` |
 | Sessions: random 256-bit token, only an HMAC hash stored, httpOnly + SameSite=Strict (+ Secure in production), idle + absolute expiry | ✅ | `auth.test.ts` |
 | Role change / deactivation revokes the user's sessions; "sign out of all devices" | ✅ | `rbac.test.ts` |
-| Login throttle and agent-run budget are in memory → move to Redis before running more than one API instance | ⏭ M15 | |
+| Login throttle, agent-run budget and global rate limit in Redis (survive restarts, shared by API instances); global limit per signed-in user | ✅ | `window-store.redis.test.ts`, `rate-limit.test.ts` |
 
 ## Authorization
 | Item | Status | Where |
@@ -53,23 +53,25 @@ Run locally: `pnpm security` (secret scan + dependency audit), `pnpm test` (incl
 | OAuth tokens encrypted at rest (AES-256-GCM); tamper detected | ✅ | `secrets.test.ts` |
 | Production refuses placeholder/short secrets, identical session/encryption keys, http:// URLs, mocks | ✅ | `config` tests |
 | Audit log append-only **in the database** (trigger blocks UPDATE/DELETE/TRUNCATE) | ✅ | `route-security.test.ts` |
-| App connects as a non-owner DB role (DML only), migrations as the owner → the trigger can't be dropped by the app | ⏭ M15 | |
+| App connects as a non-owner DB role (DML only), migrations as the owner → the trigger can't be dropped by the app; API/worker refuse to start as owner/superuser in production | ✅ | `app-role.test.ts`, CI `stack` job |
 | Encryption key rotation: re-encrypt `integration_connections` with the new key, or disconnect/reconnect | 👤 documented | |
-| Backups encrypted and restore-tested | ⏭ M15 | |
+| Nightly backups (pg_dump, 14 days) and restore tested end-to-end in CI (wipe → restore → counts match → login works → grants intact) | ✅ | CI `stack` job |
+| Encrypted off-server copy of the backups (e.g. rclone crypt to Google Drive) | 👤 documented | docs/DEPLOYMENT.md §7 |
 
 ## Transport & headers
 | Item | Status | Where |
 |---|---|---|
 | API: CSP `default-src 'none'`, frame-ancestors none, nosniff, no-referrer, HSTS, Permissions-Policy, `Cache-Control: no-store` | ✅ | `route-security.test.ts` |
 | CORS allow-list; credentials only for listed origins | ✅ | `security.test.ts` |
-| Web app served with its own CSP (script-src 'self'), HTTPS only | ⏭ M15 | |
+| Web app served by the API with its own CSP (no inline/eval scripts, same-origin only), HTTPS via Caddy, HTTP → HTTPS redirect, HSTS | ✅ | `web.test.ts`, `e2e/csp.spec.ts` (every page, zero violations) |
 
 ## Dependencies & supply chain
 | Item | Status | Where |
 |---|---|---|
 | `pnpm audit`: 0 known vulnerabilities (dev-only esbuild advisory fixed by override) | ✅ | `pnpm security:audit` |
 | Lockfile committed; MCP servers installed locally (no `npx` downloads at runtime) | ✅ | |
-| Audit + secret scan in CI on every push | ⏭ M15 | |
+| Audit + secret scan in CI on every push | ✅ | `.github/workflows/ci.yml` |
+| Runtime image without build/test tooling; runs as non-root; DB and Redis not exposed to the internet | ✅ | `Dockerfile`, `deploy/docker-compose.yml` |
 
 ## Manual checks before go-live
 - [ ] Change the owner password created at setup; create personal accounts for staff (no shared logins).

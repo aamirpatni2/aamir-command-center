@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.skip(!process.env.E2E_EMAIL, "set E2E_EMAIL and E2E_PASSWORD");
 
 // Needs the worker running (mock model in dev, or a real API key).
-test("task → Content Agent draft → review → approve → schedule → calendar", async ({ page }, info) => {
+test("task → Content Agent draft → review → approve → schedule → calendar", { tag: "@model" }, async ({ page }, info) => {
 
   await page.goto("/tasks");
   await page.getByLabel("New task").fill("Ek 45 second Reel script banao: Claude vs ChatGPT for freelancers");
