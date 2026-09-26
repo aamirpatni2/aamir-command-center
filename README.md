@@ -21,11 +21,14 @@ pnpm dev:api                    # http://localhost:4000/api/health
 pnpm dev:worker                 # executes agent tasks from the Redis queue
 pnpm dev:web                    # http://localhost:5173 — sign in with the owner account
 pnpm test                       # needs the acc_test database (created by docker compose)
+pnpm test:coverage              # same, with a coverage report in coverage/
 E2E_EMAIL=... E2E_PASSWORD=... pnpm e2e   # browser smoke test (API + web must be running)
 pnpm whatsapp:simulate --name "Ali" "Salam, fee kitni hai?"   # signed test message → real webhook (dev only)
 ```
 
 ![Dashboard](docs/screenshots/dashboard-desktop-sample-data.png)
+
+Every push runs CI (GitHub Actions): typecheck, `pnpm security`, unit tests on Postgres + Redis, and the Playwright suite. No real API keys are used; agents run on the mock model.
 
 ## Docs
 - [Architecture](docs/ARCHITECTURE.md) · [Decisions](docs/DECISIONS.md) · [Implementation plan](docs/IMPLEMENTATION_PLAN.md)

@@ -164,3 +164,6 @@ Each decision lists the alternatives and why the simplest production-ready optio
 
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.
+
+## ADR-046 — CI runs everything with mocks, against real Postgres and Redis
+CI (`.github/workflows/ci.yml`) uses service containers (pgvector/pgvector:pg16, redis:7) rather than mocking the database or queue, because most bugs found so far were in SQL, time zones and queue behaviour. It never receives real API keys: agents use the mock model and every integration reports "not configured", so a CI run can never send a message or spend money. `pnpm security` (secret scan + dependency audit) is blocking; a new upstream advisory can turn CI red without a code change, which is intended.
