@@ -7,6 +7,8 @@ if [ -e .env ] || [ -e app.env ]; then echo "deploy/.env or deploy/app.env alrea
 domain="${DOMAIN:-}"
 [ -n "$domain" ] || read -r -p "Domain for the dashboard (e.g. command.example.com): " domain
 umask 077
+# Create the backups folder as you (otherwise Docker creates it owned by root).
+mkdir -p backups && chmod 700 backups
 cat > .env <<ENV
 # Stack settings for docker compose. Keep this file private (chmod 600).
 SITE_ADDRESS=${domain}

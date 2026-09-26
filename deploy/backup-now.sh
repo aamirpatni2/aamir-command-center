@@ -11,5 +11,6 @@ n=1
 while [ -e "backups/$file" ]; do file="acc-$(date +%Y%m%d-%H%M%S)-${label}-$((n++)).dump"; done
 docker compose exec -T backup pg_dump --format=custom --no-owner --file="/backups/$file.partial"
 docker compose exec -T backup mv "/backups/$file.partial" "/backups/$file"
-echo "$file" > backups/.last
+# Written by the container: deploy/backups may be owned by root (Docker creates bind-mount folders).
+docker compose exec -T backup sh -c "echo '$file' > /backups/.last"
 echo "✔ deploy/backups/$file"
