@@ -1,7 +1,7 @@
 import {
   Activity, BarChart3, BellRing, BookOpen, Bot, Brain, CalendarDays, CheckSquare, Clapperboard, FileText, Film, GraduationCap,
   LayoutDashboard, ListChecks, Megaphone, MessagesSquare, Palette, PenSquare, Plug, ScrollText, Settings,
-  ShieldCheck, Sparkles, Telescope, Users, Workflow, type LucideIcon,
+  ShieldCheck, Sparkles, Telescope, Users, UsersRound, Workflow, type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@acc/shared";
 
@@ -67,6 +67,7 @@ export const NAV: NavSection[] = [
     items: [
       { path: "/automations", label: "Automations", icon: Workflow, milestone: 10, ready: true, permission: "automations:read", description: "Trigger → condition → agent → approval → action workflows" },
       { path: "/approvals", label: "Approvals", icon: CheckSquare, milestone: 9, ready: true, permission: "approvals:read", description: "Approve, reject or edit actions agents want to take" },
+      { path: "/team", label: "Team", icon: UsersRound, milestone: 15, ready: true, permission: "users:read", description: "Team members, roles and access" },
       { path: "/logs", label: "Logs", icon: ScrollText, milestone: 2, ready: true, permission: "audit:read", description: "Audit log of sign-ins, changes and agent actions" },
       { path: "/settings", label: "Settings", icon: Settings, milestone: 2, ready: true, description: "Your account, sessions and integration status" },
     ],

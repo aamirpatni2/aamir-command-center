@@ -74,7 +74,7 @@ docker compose run --rm --no-deps \
   api node --import tsx packages/database/scripts/create-owner.ts
 ```
 
-Then remove that line from your shell history (`history -d $(history 1 | awk '{print $1}')`) and sign in. Add team members later from the API (`POST /api/users`) with their own accounts — never share logins.
+Then remove that line from your shell history (`history -d $(history 1 | awk '{print $1}')`) and sign in. Then add your team on the **Team** page (System → Team): each person gets their own account and role, with a one-time temporary password to pass on privately. Never share logins.
 
 ## 6. Connect the integrations
 

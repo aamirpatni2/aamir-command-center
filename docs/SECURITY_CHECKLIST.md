@@ -14,6 +14,7 @@ Run locally: `pnpm security` (secret scan + dependency audit), `pnpm test` (incl
 | Change password requires the current one and signs out all other sessions | ✅ | `route-security.test.ts` |
 | Sessions: random 256-bit token, only an HMAC hash stored, httpOnly + SameSite=Strict (+ Secure in production), idle + absolute expiry | ✅ | `auth.test.ts` |
 | Role change / deactivation revokes the user's sessions; "sign out of all devices" | ✅ | `rbac.test.ts` |
+| Owner-only password reset for a team member: temporary password generated in the browser (crypto RNG), shown once, weak-password rules, signs them out everywhere, audited; never for your own account | ✅ | `rbac.test.ts`, `e2e/team.spec.ts` |
 | Login throttle, agent-run budget and global rate limit in Redis (survive restarts, shared by API instances); global limit per signed-in user | ✅ | `window-store.redis.test.ts`, `rate-limit.test.ts` |
 
 ## Authorization

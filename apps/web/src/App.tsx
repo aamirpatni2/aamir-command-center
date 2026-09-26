@@ -6,6 +6,7 @@ import { LoginPage } from "./pages/LoginPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { LogsPage } from "./pages/LogsPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
+import { TeamPage } from "./pages/TeamPage.js";
 import { ComingSoonPage } from "./pages/ComingSoonPage.js";
 import { TasksPage } from "./pages/TasksPage.js";
 import { TaskDetailPage } from "./pages/TaskDetailPage.js";
@@ -56,6 +57,7 @@ const READY: Record<string, ReactNode> = {
   "/": <DashboardPage />,
   "/logs": <LogsPage />,
   "/settings": <SettingsPage />,
+  "/team": <TeamPage />,
   "/tasks": <TasksPage />,
   "/agents": <AgentsPage />,
   "/leads": <LeadsPage />,

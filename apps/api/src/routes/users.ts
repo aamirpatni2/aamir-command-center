@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { and, asc, count, eq, hashPassword, isNull, schema, writeAudit, type Database } from "@acc/database";
-import { createUserRequestSchema, ROLES, weakPasswordReason } from "@acc/shared";
+import { createUserRequestSchema, newPasswordSchema, ROLES, weakPasswordReason } from "@acc/shared";
 import { conflict, forbidden, HttpError, notFound, parse } from "../lib/errors.js";
 import { requireAuth } from "../plugins/auth.js";
 import { auditMeta } from "../lib/audit.js";
@@ -25,6 +25,7 @@ const updateUserSchema = z
   .refine((v) => Object.keys(v).length > 0, "Nothing to update");
 
 const idParam = z.object({ id: z.string().uuid() });
+const resetPasswordSchema = z.object({ password: newPasswordSchema });
 
 export async function userRoutes(app: FastifyInstance, opts: { db: Database }) {
   const { db } = opts;
@@ -76,5 +77,24 @@ export async function userRoutes(app: FastifyInstance, opts: { db: Database }) {
       metadata: { before: { role: target.role, isActive: target.isActive }, after: body },
     });
     return { user };
+  });
+
+  /**
+   * The owner sets a temporary password for a team member who forgot theirs. Signs them out
+   * everywhere; they should change it in Settings. Your own password is changed in Settings
+   * (which asks for the current one), never here.
+   */
+  app.post("/api/users/:id/password", { preHandler: requireAuth("users:manage") }, async (req) => {
+    const { id } = parse(idParam, req.params);
+    const { password } = parse(resetPasswordSchema, req.body);
+    if (id === req.auth!.user.id) throw forbidden("Change your own password in Settings");
+    const [target] = await db.select().from(schema.users).where(and(eq(schema.users.id, id), activeUser));
+    if (!target) throw notFound("User");
+    const weak = weakPasswordReason(password, target.email);
+    if (weak) throw new HttpError(400, "WEAK_PASSWORD", weak, [{ path: "password", message: weak }]);
+    await db.update(schema.users).set({ passwordHash: await hashPassword(password) }).where(eq(schema.users.id, id));
+    await app.sessions.revokeAllForUser(id);
+    await writeAudit(db, { ...auditMeta(req), action: "user.password_reset", entityType: "user", entityId: id });
+    return { ok: true };
   });
 }

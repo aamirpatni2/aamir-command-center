@@ -22,6 +22,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | GET | `/api/users` | `users:read` | list users |
 | POST | `/api/users` | `users:manage` | `{email, name, role, password(12+)}` → 201 |
 | PATCH | `/api/users/:id` | `users:manage` | `{name?, role?, isActive?}`; can't demote or deactivate the last owner or yourself; role/active changes revoke that user's sessions |
+| POST | `/api/users/:id/password` | `users:manage` | `{password(12+)}` → `{ok}`: the owner sets a temporary password for a team member (not for yourself: use `/api/auth/password`); weak-password rules; signs them out everywhere; audited `user.password_reset` |
 | GET | `/api/audit-logs` | `audit:read` | `?limit&before&action&entityType` → `{auditLogs, nextBefore}` |
 | GET | `/api/agents` | `tasks:read` | defined agents (description, current limitations, tools, model, effort, max steps) + model availability `{available, mock, reason?}` |
 | POST | `/api/tasks` | `tasks:create` | `{input (3–4000 chars), title?}` → 202 `{task, mock}` and enqueues it. 503 `MODEL_NOT_CONFIGURED` (nothing created) or `QUEUE_UNAVAILABLE` (task marked FAILED) |

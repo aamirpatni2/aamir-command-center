@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createUser, login, setupTestApp, teardown, type TestContext } from "./test/helpers.js";
+import { createUser, login, PASSWORD, setupTestApp, teardown, type TestContext } from "./test/helpers.js";
 
 let ctx: TestContext;
 let owner: Awaited<ReturnType<typeof login>>;
@@ -67,6 +67,31 @@ describe("user management (RBAC)", () => {
   it("invalid uuid param → 400", async () => {
     const res = await ctx.app.inject({ method: "PATCH", url: "/api/users/not-a-uuid", headers: owner.headers, payload: { name: "x" } });
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe("owner resets a team member's password", () => {
+  it("only the owner, never for yourself, strong passwords only; signs them out and is audited", async () => {
+    const target = await createUser(ctx, "operator", "forgot@example.test");
+    const theirSession = await login(ctx, "forgot@example.test");
+    const reset = (headers: Record<string, string>, id: string, password: string) =>
+      ctx.app.inject({ method: "POST", url: `/api/users/${id}/password`, headers, payload: { password } });
+
+    expect((await reset(admin.headers, target.id, "a-brand-new-passphrase")).statusCode).toBe(403);
+    expect((await reset(operator.headers, target.id, "a-brand-new-passphrase")).statusCode).toBe(403);
+    expect((await reset(owner.headers, ownerId, "a-brand-new-passphrase")).statusCode).toBe(403);
+    expect((await reset(owner.headers, target.id, "short")).statusCode).toBe(400);
+    expect((await reset(owner.headers, target.id, "password1234")).json().error.code).toBe("WEAK_PASSWORD");
+    expect((await reset(owner.headers, "00000000-0000-4000-8000-000000000000", "a-brand-new-passphrase")).statusCode).toBe(404);
+
+    const ok = await reset(owner.headers, target.id, "a-brand-new-passphrase");
+    expect(ok.json()).toEqual({ ok: true });
+    // Signed out everywhere; old password gone; new one works.
+    expect((await ctx.app.inject({ method: "GET", url: "/api/auth/me", headers: { cookie: theirSession.cookie } })).statusCode).toBe(401);
+    await expect(login(ctx, "forgot@example.test", PASSWORD)).rejects.toThrow();
+    await login(ctx, "forgot@example.test", "a-brand-new-passphrase");
+    const audit = await ctx.app.inject({ method: "GET", url: "/api/audit-logs?action=user.password_reset", headers: owner.headers });
+    expect(audit.json().auditLogs[0]).toMatchObject({ entityId: target.id });
   });
 });
 
