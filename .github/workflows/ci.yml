@@ -1,0 +1,134 @@
+# Automated checks on every push and pull request. Uses no real API keys: agents run on the
+# built-in mock model and every external integration reports "not configured".
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+jobs:
+  checks:
+    name: Typecheck, security, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: acc
+          POSTGRES_PASSWORD: acc_dev_password
+          POSTGRES_DB: acc_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U acc" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://acc:acc_dev_password@localhost:5432/acc_test
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Secret scan and dependency audit
+        run: pnpm security
+      - name: Unit and integration tests (with coverage)
+        run: pnpm test:coverage
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            node -e 'const t=require("./coverage/coverage-summary.json").total; const r=(k)=>`| ${k} | ${t[k].pct}% |`; console.log(["### Coverage","| | |","|---|---|",r("lines"),r("statements"),r("branches"),r("functions")].join("\n"))' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  e2e:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: acc
+          POSTGRES_PASSWORD: acc_dev_password
+          POSTGRES_DB: acc_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U acc" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      E2E_EMAIL: ci-owner@example.test
+      E2E_PASSWORD: ci-owner-password-for-e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD= pnpm exec playwright install --with-deps chromium
+      - name: Local .env (throwaway secrets, mocks on)
+        run: |
+          cp .env.example .env
+          rand() { node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"; }
+          sed -i "s|^SESSION_SECRET=.*|SESSION_SECRET=$(rand)|; s|^ACC_ENCRYPTION_KEY=.*|ACC_ENCRYPTION_KEY=$(rand)|" .env
+          sed -i "s|^ACC_ENABLE_MOCKS=.*|ACC_ENABLE_MOCKS=true|; s|^WHATSAPP_APP_SECRET=.*|WHATSAPP_APP_SECRET=dev-local-secret|; s|^WHATSAPP_TRIAGE_DELAY_SECONDS=.*|WHATSAPP_TRIAGE_DELAY_SECONDS=3|" .env
+          mkdir -p data/uploads data/exports
+      - name: Migrate and create the owner account
+        run: |
+          pnpm db:migrate
+          OWNER_EMAIL="$E2E_EMAIL" OWNER_NAME="CI Owner" OWNER_PASSWORD="$E2E_PASSWORD" pnpm db:create-owner
+      - name: Start API, worker and web
+        run: |
+          mkdir -p logs
+          nohup pnpm dev:api > logs/api.log 2>&1 &
+          nohup pnpm dev:worker > logs/worker.log 2>&1 &
+          nohup pnpm dev:web > logs/web.log 2>&1 &
+          for url in http://localhost:4000/api/health http://localhost:5173/api/health; do
+            for i in $(seq 1 60); do curl -sf "$url" >/dev/null && break; sleep 2; done
+            curl -sf "$url" >/dev/null || { echo "$url did not come up"; cat logs/*.log; exit 1; }
+          done
+      - name: Playwright
+        run: pnpm e2e
+      - name: Server logs
+        if: failure()
+        run: tail -n 200 logs/*.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: e2e/.results/
+          retention-days: 7

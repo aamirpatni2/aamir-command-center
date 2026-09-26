@@ -41,7 +41,7 @@ describe("WhatsApp webhook", () => {
   });
 
   it("a signed message creates contact, conversation, message, scored lead, and queues triage", async () => {
-    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?" });
+    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?", timestamp: 1_790_000_000 });
     const res = await post(body);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ status: "ok", messages: 1, newLeads: 1, triaged: 1 });
@@ -62,7 +62,7 @@ describe("WhatsApp webhook", () => {
   });
 
   it("webhook replay (identical signed body) is acknowledged but not processed again", async () => {
-    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?" });
+    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?", timestamp: 1_790_000_000 });
     const res = await post(body);
     expect(res.json()).toEqual({ status: "duplicate" });
     expect(await n(schema.messages)).toBe(1);

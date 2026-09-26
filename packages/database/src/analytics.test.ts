@@ -154,6 +154,23 @@ describe("today and insights", () => {
     expect(t.allClear).toBe(false);
   });
 
+  it("hot leads gone quiet, follow-ups due or overdue, and today's classes", async () => {
+    // Overdue, due later today, due tomorrow (not today's business).
+    for (const [i, due] of ["04T10:00:00", "05T18:00:00", "06T09:00:00"].entries()) {
+      const c = (await h.db.insert(schema.contacts).values({ phone: `+92300000040${i}`, name: `Follow Up ${i}` }).returning())[0]!;
+      await h.db.insert(schema.leads).values({ contactId: c.id, source: "manual", nextFollowUpAt: at(due), createdAt: new Date("2026-08-01T12:00:00+05:00") });
+    }
+    const t = await getToday(h.db, at("05T13:00:00"));
+    // Lead 0 (score 70) was created on the 2nd and nobody has written since.
+    expect(t.hotGoneQuiet).toEqual([expect.objectContaining({ contactName: "Lead 0", score: 70 })]);
+    expect(t.followUpsDue.map((f) => f.overdue)).toEqual([true, false]);
+    expect(t.classesToday).toEqual([expect.objectContaining({ title: "Class 1", batch: "Batch 1", course: "AI Course" })]);
+    // Two weeks later the quiet lead has dropped off the list.
+    expect((await getToday(h.db, at("20T13:00:00"))).hotGoneQuiet).toEqual([]);
+    const { insights } = await getInsights(h.db, RANGE, at("08T09:00:00"));
+    expect(insights.map((i) => i.id)).toEqual(expect.arrayContaining(["waiting", "hot-quiet"]));
+  });
+
   it("insights appear only with enough data", async () => {
     const { insights } = await getInsights(h.db, RANGE, at("08T09:00:00"));
     const ids = insights.map((i) => i.id);

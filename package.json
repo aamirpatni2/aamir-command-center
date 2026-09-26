@@ -25,11 +25,13 @@
     "lint": "pnpm typecheck",
     "security:secrets": "node scripts/secret-scan.mjs",
     "security:audit": "pnpm audit --audit-level=moderate",
-    "security": "pnpm security:secrets && pnpm security:audit"
+    "security": "pnpm security:secrets && pnpm security:audit",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@playwright/test": "~1.56.1",
     "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "4.1.11",
     "tsx": "^4.20.0",
     "typescript": "~5.9.0",
     "vitest": "^4.0.0"

@@ -14,9 +14,10 @@ export interface TaskQueue {
 }
 
 /** BullMQ-backed queue. jobId = taskId, so enqueuing the same task twice is a no-op. */
-export function createTaskQueue(redisUrl: string): TaskQueue {
+export function createTaskQueue(redisUrl: string, opts: { prefix?: string } = {}): TaskQueue & { queue: Queue } {
   const queue = new Queue(TASK_QUEUE, {
     connection: { url: redisUrl },
+    ...(opts.prefix ? { prefix: opts.prefix } : {}),
     defaultJobOptions: {
       // No automatic retries: a retried agent run could repeat side effects. Failed tasks are re-run deliberately.
       attempts: 1,
@@ -25,6 +26,7 @@ export function createTaskQueue(redisUrl: string): TaskQueue {
     },
   });
   return {
+    queue,
     enqueue: async (taskId) => {
       await queue.add("execute", { taskId }, { jobId: taskId });
     },
@@ -70,9 +72,10 @@ export interface AutomationQueue {
   close(): Promise<void>;
 }
 
-export function createAutomationQueue(redisUrl: string): AutomationQueue & { queue: Queue } {
+export function createAutomationQueue(redisUrl: string, opts: { prefix?: string } = {}): AutomationQueue & { queue: Queue } {
   const queue = new Queue<AutomationJob>(AUTOMATION_QUEUE, {
     connection: { url: redisUrl },
+    ...(opts.prefix ? { prefix: opts.prefix } : {}),
     defaultJobOptions: { attempts: 1, removeOnComplete: { age: 3 * 24 * 3600, count: 2000 }, removeOnFail: { age: 14 * 24 * 3600 } },
   });
   return {

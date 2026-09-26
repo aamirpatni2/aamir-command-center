@@ -64,7 +64,7 @@ export const studentSearch: Tool<z.infer<typeof studentSearchInput>, unknown> = 
       .where(
         and(
           isNull(schema.students.deletedAt),
-          query ? sql`(${schema.contacts.name} ilike ${`%${query}%`} or ${schema.contacts.phone} like ${`%${query.replace(/\D/g, "") || query}%`})` : undefined,
+          query ? sql`(${schema.contacts.name} ilike ${`%${query}%`} or ${schema.contacts.phone} like ${`%${query.replace(/\D/g, "").replace(/^0+/, "") || query}%`})` : undefined,
           batchName ? sql`${schema.courseBatches.name} ilike ${`%${batchName}%`}` : undefined,
         ),
       )
