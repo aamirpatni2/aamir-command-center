@@ -57,3 +57,27 @@ export const whatsappTemplates = pgTable(
   },
   (t) => [uniqueIndex("whatsapp_templates_name_lang_unique").on(t.name, t.language), index("whatsapp_templates_status_idx").on(t.status)],
 );
+
+/**
+ * Saved analytics reports. `metrics` is always computed by the server for the range (never taken
+ * from an agent); `narrative` is optional commentary by the Analytics Agent or a person.
+ */
+export const analyticsReports = pgTable(
+  "analytics_reports",
+  {
+    id: id(),
+    /** daily | weekly | monthly | custom */
+    period: text("period").notNull(),
+    fromDate: text("from_date").notNull(),
+    toDate: text("to_date").notNull(),
+    title: text("title").notNull(),
+    metrics: jsonb("metrics").$type<Record<string, unknown>>().notNull(),
+    narrative: text("narrative"),
+    /** "user" | "agent" | "automation" */
+    source: text("source").notNull().default("user"),
+    createdBy: uuid("created_by").references(() => users.id),
+    taskId: uuid("task_id"),
+    ...timestamps,
+  },
+  (t) => [index("analytics_reports_created_idx").on(t.createdAt)],
+);

@@ -73,6 +73,11 @@ Source of truth: `packages/database/src/schema/*.ts`.
 | `oauth_states` | state (PK), provider, user_id, code_verifier_enc, expires_at | single-use, 10 minutes |
 | `whatsapp_templates` | name + language (unique), status, category, body, body_params, components | mirror of WhatsApp Manager |
 
+### Analytics (M12)
+| Table | Key columns | Notes |
+|---|---|---|
+| `analytics_reports` | period, from_date, to_date, title, metrics jsonb, narrative, source (`user/agent/automation`), created_by, task_id | metrics are always computed by the server |
+
 ### Knowledge (RAG)
 | Table | Key columns |
 |---|---|

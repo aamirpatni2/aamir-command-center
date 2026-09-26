@@ -55,7 +55,7 @@ export async function setupTestApp(
     loginIp: { max: 1_000, timeWindow: "1 minute" },
   },
   envOverrides: Record<string, string> = {},
-  extra: Pick<Parameters<typeof buildApp>[0], "whatsapp" | "mcp" | "oauthFetch"> = {},
+  extra: Pick<Parameters<typeof buildApp>[0], "whatsapp" | "mcp" | "oauthFetch" | "ads"> = {},
 ): Promise<TestContext> {
   const url = await resetTestDatabase();
   const env = envSchema.parse({

@@ -25,10 +25,14 @@ import type { WebSearchProvider } from "./integrations/web/search.js";
 import type { Resolver } from "./integrations/web/fetch.js";
 
 import { makeWorkspaceTools } from "./tools/workspace.js";
+import { makeAnalyticsTools } from "./tools/analytics.js";
+import type { MetaAdsClient } from "./integrations/meta/ads.js";
 import type { OAuthService } from "./integrations/oauth/service.js";
 import type { McpClientManager } from "./mcp/manager.js";
 
 export interface ToolRegistryOptions {
+  /** Read-only Meta ads data for ads.insights. */
+  ads?: MetaAdsClient | null;
   /** Google / Canva tools use it; without it they report not_connected. */
   oauth?: OAuthService | null;
   /** Allow-listed MCP tools are registered and granted per agent (mcp.config.json). */
@@ -52,6 +56,7 @@ export function createDefaultToolRegistry(opts: ToolRegistryOptions = {}): ToolR
     makeWebFetch({ enabled: !!opts.webSearch, fetchImpl: opts.fetchImpl, resolve: opts.resolve }),
     researchSave,
     ...makeWorkspaceTools(opts.oauth ?? null),
+    ...makeAnalyticsTools(opts.ads ?? null),
   );
   if (opts.mcp) {
     registry.register(...opts.mcp.tools());
@@ -82,3 +87,5 @@ export * from "./mcp/manager.js";
 export * from "./integrations/oauth/service.js";
 export * from "./integrations/whatsapp/templates.js";
 export { makeWorkspaceTools, buildMime } from "./tools/workspace.js";
+export * from "./integrations/meta/ads.js";
+export { makeAnalyticsTools } from "./tools/analytics.js";

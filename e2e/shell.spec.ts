@@ -27,10 +27,10 @@ test("login → dashboard → navigation → logs → logout", async ({ page, is
     if (isMobile) await page.getByRole("button", { name: "Open menu" }).click();
   };
 
-  // A roadmap page shows an honest placeholder, not fake data.
+  // Every section is built now: Analytics loads real (possibly empty) figures.
   await openNav();
   await page.getByRole("link", { name: /Analytics/ }).first().click();
-  await expect(page.getByText("Arrives in Milestone 12")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Analytics", level: 1 })).toBeVisible();
 
   await openNav();
   await page.getByRole("link", { name: /Logs/ }).click();

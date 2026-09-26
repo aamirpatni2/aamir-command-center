@@ -56,6 +56,12 @@ export async function integrationRoutes(app: FastifyInstance, opts: IntegrationR
           enables: ["Live, source-backed research"], env: envList(env, ["BRAVE_API_KEY", "TAVILY_API_KEY"]), note: "One of the two is enough.",
         },
         {
+          id: "meta_ads", label: "Meta Ads (read-only)", kind: "api_key",
+          state: env.META_ADS_ACCESS_TOKEN && env.META_AD_ACCOUNT_ID ? "connected" : "not_configured",
+          enables: ["Campaign spend, clicks, leads and cost per lead on the Ads page", "ads.insights for the Marketing and Analytics agents"],
+          env: envList(env, ["META_ADS_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"]), note: "Use a system-user token with ads_read only: nothing here can change campaigns or budgets.",
+        },
+        {
           id: "embeddings", label: "Voyage embeddings", kind: "api_key",
           state: env.VOYAGE_API_KEY ? "connected" : "not_configured",
           enables: ["Meaning-based knowledge search (full-text works without it)"], env: envList(env, ["VOYAGE_API_KEY"]), note: null,

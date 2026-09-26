@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–11)
+## Implemented (Milestones 1–12)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -91,9 +91,15 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/integrations/:provider/test` · `/disconnect` | owner | live check (refreshes if needed) / revoke + forget; `whatsapp` test checks the phone number ID |
 | POST | `/api/integrations/mcp/:id/test` | owner | reconnect a configured MCP server and report its state |
 | POST | `/api/whatsapp/templates/sync` | `mcp:read` | mirror templates from WhatsApp Manager |
+| GET | `/api/analytics` | `analytics:read` | `?preset=last_7_days\|last_30_days\|…` or `?from&to` (YYYY-MM-DD, Pakistan days, ≤ 1 year) → `{current, previous}` |
+| GET | `/api/analytics/today` | `analytics:read` | what needs a person now |
+| GET | `/api/analytics/insights` | `analytics:read` | rule-based insights for the range |
+| GET | `/api/reports` · `/api/reports/:id` | `analytics:read` | saved reports |
+| POST | `/api/reports` | `tasks:create` | `{period, preset \| from+to}` numbers-only snapshot |
+| POST | `/api/reports/agent` | `tasks:create` | `{preset, period}` queues the Analytics Agent to write and save the report |
+| GET | `/api/ads` | `campaigns:read` | `?preset=last_7d\|last_30d\|last_90d` Meta campaign results (read-only) or `not_configured` |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/analytics` | 12 |

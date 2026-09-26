@@ -9,3 +9,5 @@ export * from "./education.js";
 export * from "./content.js";
 export * from "./knowledge.js";
 export * from "./secrets.js";
+export * from "./analytics.js";
+export * from "./today.js";

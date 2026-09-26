@@ -22,9 +22,10 @@ import { whatsappWebhookRoutes } from "./routes/webhooks.js";
 import { approvalRoutes } from "./routes/approvals.js";
 import { automationRoutes } from "./routes/automations.js";
 import { integrationRoutes } from "./routes/integrations.js";
+import { analyticsRoutes } from "./routes/analytics.js";
 import { TaskEventHub } from "./lib/task-events.js";
 import {
-  createAutomationQueue, createTaskQueue, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, WhatsAppClient,
+  createAutomationQueue, createTaskQueue, MetaAdsClient, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, WhatsAppClient,
   type AutomationQueue, type TaskQueue,
 } from "@acc/agents";
 
@@ -48,6 +49,8 @@ export interface BuildAppOptions {
   mcp?: McpClientManager;
   /** Network for OAuth providers (tests inject a fake). */
   oauthFetch?: typeof fetch;
+  /** Read-only Meta ads client (tests inject one with a fake fetch). */
+  ads?: MetaAdsClient;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -145,6 +148,8 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
   await app.register(approvalRoutes, { db, whatsapp, oauth, events: hub });
   await app.register(integrationRoutes, { db, env, oauth, mcp, whatsapp });
+  const ads = opts.ads ?? new MetaAdsClient({ accessToken: env.META_ADS_ACCESS_TOKEN, adAccountId: env.META_AD_ACCOUNT_ID, graphVersion: env.WHATSAPP_GRAPH_VERSION });
+  await app.register(analyticsRoutes, { db, ads, queue });
   await app.register(automationRoutes, { db, automations });
 
   return app;

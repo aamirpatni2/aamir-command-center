@@ -8,7 +8,7 @@ import pino from "pino";
 import { loadEnv } from "@acc/config";
 import { createDb, eq, isNull, schema } from "@acc/database";
 import {
-  AUTOMATION_QUEUE, createAutomationQueue, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, createDefaultToolRegistry, createTaskQueue, createWhatsappTriageTask, embedderFromEnv, executeTask,
+  AUTOMATION_QUEUE, MetaAdsClient, createAutomationQueue, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, createDefaultToolRegistry, createTaskQueue, createWhatsappTriageTask, embedderFromEnv, executeTask,
   handleEvent, handleSchedule, handleSweep, modelAvailability, RedisEventSink, resolveModel, ruleFromRow, SWEEP_EVERY_MS, TASK_QUEUE, TRIAGE_JOB,
   webSearchFromEnv, type AutomationJob, type EngineDeps,
 } from "@acc/agents";
@@ -33,7 +33,8 @@ const mcp = new McpClientManager(loadMcpConfig(defaultMcpConfigPath(REPO_ROOT, p
 });
 // MCP tools are registered now and offered to agents as soon as their server connects.
 void mcp.start().then(() => logger.info({ servers: mcp.statuses().map((s) => `${s.id}:${s.state}`) }, "mcp servers"));
-const tools = createDefaultToolRegistry({ webSearch, embedder, oauth, mcp });
+const ads = new MetaAdsClient({ accessToken: env.META_ADS_ACCESS_TOKEN, adAccountId: env.META_AD_ACCOUNT_ID, graphVersion: env.WHATSAPP_GRAPH_VERSION });
+const tools = createDefaultToolRegistry({ webSearch, embedder, oauth, mcp, ads });
 logger.info({ webSearch: webSearch?.id ?? "not configured", embeddings: embedder ? embedder.model : "not configured (full-text search only)" }, "integrations");
 
 const availability = modelAvailability(env);

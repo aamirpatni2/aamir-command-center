@@ -69,11 +69,11 @@ export const SPECIALISTS: Partial<Record<AgentId, AgentDefinition>> = {
     limitations: "Messages, certificates and calendar invites go to approval. Messages need WhatsApp credentials and reach only students who wrote in the last 24 hours; Calendar and Gmail need Google connected.",
   }),
   marketing: specialist("marketing", "Campaign analysis, ad copy, hooks, creative ideas, audience hypotheses, performance summaries.", {
-    tools: ["kb.search", "course.catalog", "canva.designs.list", "canva.designs.create", "google.gmail.create_draft"],
-    limitations: "No ad account data yet (Milestone 12): analyses only numbers provided; never changes campaigns or budgets.",
+    tools: ["kb.search", "course.catalog", "canva.designs.list", "canva.designs.create", "google.gmail.create_draft", "analytics.report", "ads.insights"],
+    limitations: "Ad data is read-only and needs META_ADS_ACCESS_TOKEN and META_AD_ACCOUNT_ID; it never changes campaigns or budgets.",
   }),
   analytics: specialist("analytics", "Revenue, lead, conversion, course, content, campaign and agent analytics; daily/weekly reports.", {
-    limitations: "No database queries yet (Milestone 12): works only with figures provided in the request or earlier steps.",
+    tools: ["kb.search", "analytics.report", "analytics.today", "analytics.save_report", "ads.insights"],
   }),
   course: specialist("course", "Course structure, lesson plans, teaching material, assignments, quizzes, course documentation, learning support.", {
     effort: "high",

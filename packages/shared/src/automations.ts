@@ -238,6 +238,18 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
     },
   },
   {
+    id: "weekly-report",
+    definition: {
+      name: "Weekly business report",
+      description: "Every Monday morning the Analytics Agent writes last week's report (revenue, leads, reply speed, agents) and saves it under Reports.",
+      trigger: { event: "schedule", cron: "50 8 * * 1", tz: AUTOMATION_TZ },
+      conditions: [],
+      actions: [{ type: "agent_task", agent: "analytics", instruction: "Write the weekly report for last week: call analytics.report with preset last_week, compare with the previous week, and save it with analytics.save_report (period weekly, preset last_week). Lead with what changed and the 3 most useful next actions." }],
+      maxRunsPerHour: 2,
+      enabled: false,
+    },
+  },
+  {
     id: "hot-lead-flag",
     definition: {
       name: "Flag hot WhatsApp leads for a call",

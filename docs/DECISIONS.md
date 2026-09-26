@@ -145,5 +145,15 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-040 — Templates are the only way to message outside WhatsApp's 24-hour window
 - **Why**: Meta rejects free text after 24 h. Templates are pre-approved by Meta, synced locally, validated (approved status, parameter count) at send time and still approved by Aamir per message.
 
+## ADR-041 — Analytics in SQL, narratives from the agent, numbers never from the agent
+- **Decision**: every metric is a SQL aggregate over real records for Pakistan calendar days; the Analytics Agent reads them through `analytics.report` and can only add prose via `analytics.save_report`, which recomputes the numbers itself.
+- **Why**: reports drive decisions. A model can misread or invent figures; saving its narrative next to server-computed metrics keeps the numbers trustworthy and the commentary useful.
+
+## ADR-042 — "AI Insights" are rules until there's enough data for more
+- **Why**: with a young database, statistical "insights" would mostly be noise. Fixed, documented rules with minimum-data thresholds (e.g. ≥ 5 answered chats, ≥ 10 leads) only speak when the data supports it; the Analytics Agent's written report adds interpretation on request.
+
+## ADR-043 — Meta Ads read-only
+- **Why**: spending money is the highest-risk action in the system. v1 uses an `ads_read` token and never writes; campaign changes would need an owner-only, approval-gated flow (not built).
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

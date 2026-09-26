@@ -63,6 +63,10 @@ export const envSchema = z
     GITHUB_TOKEN: optionalString,
     MCP_CONFIG: optionalString,
 
+    /** Meta Marketing API, read-only (ads_read): campaign results on the Ads page. */
+    META_ADS_ACCESS_TOKEN: optionalString,
+    META_AD_ACCOUNT_ID: optionalString,
+
     BRAVE_API_KEY: optionalString,
     TAVILY_API_KEY: optionalString,
     VOYAGE_API_KEY: optionalString,
