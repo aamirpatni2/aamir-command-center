@@ -9,7 +9,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 - **Tracing**: every response has `x-request-id`.
 - **Rate limits**: 300 req/min per IP globally; login: 5 failed attempts / 15 min per IP + email (success resets), 30 login requests / 15 min per IP.
 
-## Implemented (Milestones 1–9)
+## Implemented (Milestones 1–10)
 
 | Method | Path | Permission | Description |
 |---|---|---|---|
@@ -78,11 +78,17 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/approvals/:id/approve` | same | `{note?, edits?}` → approve + execute once → `{approval, outcome}`; outcome `executed` / `not_executed` (+code: `NOT_CONFIGURED`, `OUTSIDE_WINDOW`, `PRECONDITION`, `PROVIDER_REJECTED`, `NO_EXECUTOR`; nothing happened, retryable) / `unknown` (→ `failed`, never retried). 409 `ALREADY_DECIDED` / `EXPIRED` |
 | POST | `/api/approvals/:id/execute` | same | retry an approved, not-executed action; 409 `NOT_EXECUTABLE` otherwise |
 | POST | `/api/approvals/:id/reject` | same | `{note?}` rejects a pending request or cancels an approved, not-executed one |
+| GET | `/api/automations` | `automations:read` | rules (definition, trigger summary, run counts, last status, next 3 schedule runs) + `canManage` + catalogue (events, fields, operators, actions, agents, templates) |
+| GET | `/api/automations/runs` | `automations:read` | `?ruleId&limit` run history with per-action results (task / approval ids) |
+| POST | `/api/automations` · PUT `/api/automations/:id` | `automations:manage` (owner) | full rule definition; 400 for unknown fields, actions the trigger can't support, `won/lost` status, invalid cron or more often than every 15 min |
+| POST | `/api/automations/:id/enabled` | owner | `{enabled}`; registers/removes the schedule (warning, not error, if Redis is down) |
+| POST | `/api/automations/:id/run` | owner | schedule rules only: run once now (works while switched off) |
+| POST | `/api/automations/dry-run` | owner | definition → sample record, condition results, rendered actions, next runs. No writes |
+| DELETE | `/api/automations/:id` | owner | soft delete + remove schedule |
 
 ## Planned
 
 | Resource | Milestone |
 |---|---|
-| `/api/automations` | 10 |
 | `/api/mcp` | 11 |
 | `/api/analytics` | 12 |

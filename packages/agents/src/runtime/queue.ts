@@ -45,3 +45,54 @@ export class RedisEventSink implements TaskEventSink {
 }
 
 export { Redis };
+
+// ── Automations ───────────────────────────────────────────────────────────
+export const AUTOMATION_QUEUE = "automations";
+export const SWEEP_EVERY_MS = 10 * 60_000;
+
+export interface AutomationJob {
+  kind: "event" | "schedule" | "sweep";
+  event?: string;
+  ref?: Record<string, unknown>;
+  ruleId?: string;
+  firedAt?: string;
+}
+
+/** BullMQ rejects custom job ids containing ":" (reserved for its own keys). */
+export const automationJobId = (...parts: string[]) => parts.join("__").replace(/:/g, "-");
+
+export interface AutomationQueue {
+  /** Fire-and-forget: callers must never fail their own request because Redis is down. */
+  emit(event: string, ref: Record<string, unknown>, refId: string): Promise<void>;
+  /** Creates, updates or removes the repeatable job for a schedule rule. */
+  syncSchedule(rule: { id: string; active: boolean; cron?: string; tz?: string }): Promise<void>;
+  runNow(ruleId: string): Promise<void>;
+  close(): Promise<void>;
+}
+
+export function createAutomationQueue(redisUrl: string): AutomationQueue & { queue: Queue } {
+  const queue = new Queue<AutomationJob>(AUTOMATION_QUEUE, {
+    connection: { url: redisUrl },
+    defaultJobOptions: { attempts: 1, removeOnComplete: { age: 3 * 24 * 3600, count: 2000 }, removeOnFail: { age: 14 * 24 * 3600 } },
+  });
+  return {
+    queue,
+    emit: async (event, ref, refId) => {
+      // jobId dedupes a second delivery of the same event at the queue level (the DB unique index is the real guard).
+      await queue.add("event", { kind: "event", event, ref }, { jobId: automationJobId(event, refId) });
+    },
+    syncSchedule: async (rule) => {
+      const id = `rule:${rule.id}`;
+      if (rule.active && rule.cron) {
+        await queue.upsertJobScheduler(id, { pattern: rule.cron, tz: rule.tz }, { name: "schedule", data: { kind: "schedule", ruleId: rule.id } });
+      } else {
+        await queue.removeJobScheduler(id);
+      }
+    },
+    runNow: async (ruleId) => {
+      const firedAt = `manual:${Date.now()}`;
+      await queue.add("schedule", { kind: "schedule", ruleId, firedAt }, { jobId: automationJobId(ruleId, firedAt) });
+    },
+    close: () => queue.close(),
+  };
+}

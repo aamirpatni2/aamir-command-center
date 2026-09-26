@@ -24,6 +24,7 @@ import { CalendarPage } from "./pages/CalendarPage.js";
 import { KnowledgePage } from "./pages/KnowledgePage.js";
 import { ResearchPage } from "./pages/ResearchPage.js";
 import { ApprovalsPage } from "./pages/ApprovalsPage.js";
+import { AutomationsPage } from "./pages/AutomationsPage.js";
 import { ALL_NAV_ITEMS } from "./nav.js";
 import type { Permission } from "@acc/shared";
 
@@ -63,6 +64,7 @@ const READY: Record<string, ReactNode> = {
   "/knowledge": <KnowledgePage />,
   "/research": <ResearchPage />,
   "/approvals": <ApprovalsPage />,
+  "/automations": <AutomationsPage />,
 };
 
 export function App() {

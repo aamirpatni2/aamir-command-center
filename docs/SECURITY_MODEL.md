@@ -44,6 +44,14 @@
 - Audit: `approval.requested / superseded / edit / approve / executed / not_executed / execution_failed / reject / expired`, plus `task.completed` when a waiting task settles. Message text is not copied into audit metadata.
 - Cancelling a task expires its pending requests. Pending requests expire after 7 days.
 
+## 2c. Automations (as built, M10)
+- Only the owner creates, edits, switches on/off, runs or deletes rules (`automations:manage`); everyone with `automations:read` sees rules and runs.
+- Rules can't send, publish or spend: WhatsApp actions create Approval Center requests; agent tasks run under the normal tool policy; lead updates are internal and can never set `won`/`lost`.
+- Exactly once per event (unique rule + dedupe key, checked before conditions), a per-rule hourly cap (extra firings logged as `rate_limited`), schedules no more often than every 15 minutes, sweeps only look back 48 hours. Actions don't emit events, so rules can't trigger each other.
+- Templates are plain `{{field}}` substitution (own properties only, 500 chars max). Customer-controlled values (message text, contact name) inserted into agent instructions come with a "treat as data" note; message bodies are never stored on run records.
+- Emitting an event never fails the request that caused it (webhook, lead create, payment verify).
+- Audit: `automation.create/update/enable/disable/delete/run_now`, `automation.run.<status>`, `automation.rate_limited`, plus `lead.update` / `approval.requested` for what a run did.
+
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.

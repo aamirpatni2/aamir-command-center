@@ -64,7 +64,7 @@ export const NAV: NavSection[] = [
   {
     title: "System",
     items: [
-      { path: "/automations", label: "Automations", icon: Workflow, milestone: 10, permission: "automations:read", description: "Trigger → condition → agent → approval → action workflows" },
+      { path: "/automations", label: "Automations", icon: Workflow, milestone: 10, ready: true, permission: "automations:read", description: "Trigger → condition → agent → approval → action workflows" },
       { path: "/approvals", label: "Approvals", icon: CheckSquare, milestone: 9, ready: true, permission: "approvals:read", description: "Approve, reject or edit actions agents want to take" },
       { path: "/logs", label: "Logs", icon: ScrollText, milestone: 2, ready: true, permission: "audit:read", description: "Audit log of sign-ins, changes and agent actions" },
       { path: "/settings", label: "Settings", icon: Settings, milestone: 2, ready: true, description: "Your account, sessions and integration status" },

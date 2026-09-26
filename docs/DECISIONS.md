@@ -126,5 +126,14 @@ Each decision lists the alternatives and why the simplest production-ready optio
 - **Alternatives**: Google Fonts CDN; Recharts / Chart.js / ECharts.
 - **Why**: self-hosting keeps the strict CSP and avoids third-party requests. Our charts are simple (area, donut, bars), so ~300 lines we control give exact styling, glow and motion, accessible names and sr-only tables, and no 100 KB+ dependency. A library can be added in M12 if analytics needs zoom or brushing.
 
+## ADR-036 — Automations as declarative rules on their own queue
+- **Decision**: rules are data (trigger, AND conditions, ≤5 actions) validated by one Zod schema shared with the UI; events, schedules and a 10-minute sweep run on a separate BullMQ queue; the DB is the source of truth for schedules.
+- **Alternatives**: a visual node graph / n8n-style workflow engine; running automations on the agent-task queue.
+- **Why**: the automations Aamir needs are "when X, if Y, do Z". A declarative rule is easy to read, dry-run, audit and test, and can't express loops. A separate queue keeps slow agent runs from delaying event handling. A graph editor can come later on the same engine.
+
+## ADR-037 — No auto-send from automations (yet)
+- **Decision**: automation messaging always creates an Approval Center request; `policy.autoApprove` stays unused.
+- **Why**: the project rule is "no external action without explicit approval". Owner-approved WhatsApp templates (M11) are the right unit for pre-approval; free-text drafts are not.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.

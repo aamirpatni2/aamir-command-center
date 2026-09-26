@@ -80,3 +80,7 @@ export function detectSignals(text: string): LeadSignals {
   for (const [key, re] of PATTERNS) if (re.test(text)) found[key] = true;
   return found;
 }
+
+export function scoreBand(score: number): "hot" | "warm" | "cold" {
+  return score >= BANDS.hot ? "hot" : score >= BANDS.warm ? "warm" : "cold";
+}

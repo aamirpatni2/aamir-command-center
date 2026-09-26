@@ -53,6 +53,12 @@ describe("WhatsApp webhook", () => {
     expect(lead!.signals).toEqual({ askedFee: true, askedSchedule: true });
     expect(lead!.scoreReasons.map((r) => r.rule)).toEqual(["Asked about the fee", "Asked about dates or timings"]);
     expect(ctx.queue.triage).toEqual([{ conversationId: expect.any(String), delayMs: 30_000 }]);
+    // Automation events: one per stored message, plus lead.created for a new lead.
+    const [msg] = await ctx.handle.db.select().from(schema.messages);
+    expect(ctx.automations.events).toEqual([
+      { event: "whatsapp.message_received", ref: { messageId: msg!.id, leadNew: true }, refId: msg!.id },
+      { event: "lead.created", ref: { leadId: lead!.id }, refId: lead!.id },
+    ]);
   });
 
   it("webhook replay (identical signed body) is acknowledged but not processed again", async () => {
@@ -61,6 +67,7 @@ describe("WhatsApp webhook", () => {
     expect(res.json()).toEqual({ status: "duplicate" });
     expect(await n(schema.messages)).toBe(1);
     expect(ctx.queue.triage).toHaveLength(1);
+    expect(ctx.automations.events).toHaveLength(2);
   });
 
   it("duplicate message id in a different delivery is not stored twice", async () => {

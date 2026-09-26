@@ -54,8 +54,12 @@ export { EDUCATION_TOOLS } from "./tools/education.js";
 export { CONTENT_TOOLS } from "./tools/content.js";
 export * from "./integrations/whatsapp/payload.js";
 export * from "./integrations/whatsapp/client.js";
-export { createTaskQueue, RedisEventSink, TASK_QUEUE, TRIAGE_JOB, Redis, type TaskQueue } from "./runtime/queue.js";
+export {
+  createTaskQueue, createAutomationQueue, automationJobId, RedisEventSink, TASK_QUEUE, TRIAGE_JOB, AUTOMATION_QUEUE, SWEEP_EVERY_MS, Redis,
+  type TaskQueue, type AutomationQueue, type AutomationJob,
+} from "./runtime/queue.js";
 export { createWhatsappTriageTask } from "./runtime/triage.js";
 export { isPresetPlan, type PresetPlan } from "./orchestration/orchestrate.js";
 export * from "./approvals/executors.js";
 export * from "./approvals/service.js";
+export * from "./automations/engine.js";

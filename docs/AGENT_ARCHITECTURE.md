@@ -78,6 +78,11 @@ Routing quality is measured with `pnpm eval:routing` (12 cases, planner only, re
 - `approvals/service.ts`: approve, edit, reject/cancel, execute (retry), expiry, and `settleTask`, which resumes a `WAITING_APPROVAL` task by completing it with `approvalOutcomes` once none of its approvals is open. Agents are not re-run after a decision; follow-ups are new tasks (automations, M10).
 - Tools declare `editableFields` (e.g. `["text"]`), so a person can reword a reply but never change who receives it.
 
+### As built (Milestone 10): Automations
+- `automations/engine.ts`: event context loading, time-based sweeps, `runRule` (dedupe → conditions → hourly cap → actions → run log), dry run, cron validation. Rule definitions and pure helpers (conditions, templates, starter templates) live in `packages/shared/src/automations.ts` so the UI builder uses the same schema.
+- Agent actions: a specialist gets a one-step preset plan (no planner call); `orchestrator` plans normally. Tasks have `source = automation` and `automation_rule_id`.
+- Worker: second BullMQ worker on the `automations` queue (`event`, `schedule`, `sweep` jobs, concurrency 1).
+
 ## 2. Orchestrator
 
 The Orchestrator is an agent whose only tools are **delegation tools**:

@@ -8,7 +8,7 @@
  *      ├──reject──▶ rejected                        └────▶ failed   (outcome unknown; never auto-retried)
  *      └──(expires_at passed / task cancelled)──▶ expired
  */
-import { and, eq, inArray, isNotNull, lt, schema, sql, writeAudit, type AuditEntry, type Database } from "@acc/database";
+import { and, eq, inArray, isNotNull, lt, ne, schema, sql, writeAudit, type AuditEntry, type Database } from "@acc/database";
 import type { TaskEventSink } from "../runtime/events.js";
 import { executorFor, runApprovedAction, type ExecutionOutcome, type ExecutorDeps } from "./executors.js";
 
@@ -32,6 +32,69 @@ export interface ApprovalDeps extends ExecutorDeps {
 export type Actor = Pick<AuditEntry, "actorId" | "ip" | "userAgent" | "requestId"> & { actorId: string };
 
 const OPEN_STATUSES = ["pending", "approved", "executing"] as const;
+
+export interface ApprovalRequest {
+  tool: { name: string; risk: ApprovalRow["risk"]; supersedeKey?: (input: any) => { field: string; value: string } };
+  payload: Record<string, unknown>;
+  title: string;
+  idempotencyKey: string;
+  taskId?: string | null;
+  runId?: string | null;
+  automationRunId?: string | null;
+  /** Agent that asked; null for automations. */
+  agentId?: ApprovalRow["requestedByAgent"];
+}
+
+/**
+ * The one way an approval request is created (agents via the ToolRegistry, and automations).
+ * Idempotent on `idempotencyKey`; a newer request with the same supersede key replaces older pending ones.
+ */
+export async function requestApproval(db: Database, r: ApprovalRequest): Promise<string> {
+  const [row] = await db
+    .insert(schema.approvals)
+    .values({
+      taskId: r.taskId ?? null,
+      runId: r.runId ?? null,
+      automationRunId: r.automationRunId ?? null,
+      actionType: r.tool.risk,
+      toolName: r.tool.name,
+      risk: r.tool.risk,
+      title: r.title,
+      payload: r.payload,
+      requestedByAgent: r.agentId ?? null,
+      idempotencyKey: r.idempotencyKey,
+      expiresAt: new Date(Date.now() + 7 * 24 * 3600_000),
+    })
+    .onConflictDoUpdate({ target: schema.approvals.idempotencyKey, set: { updatedAt: new Date() } })
+    .returning({ id: schema.approvals.id });
+  const actor = r.agentId ? { actorType: "agent" as const, actorId: r.agentId } : { actorType: "system" as const };
+  if (r.tool.supersedeKey) {
+    const key = r.tool.supersedeKey(r.payload);
+    const superseded = await db
+      .update(schema.approvals)
+      .set({ status: "expired", decisionNote: "Superseded by a newer draft", decidedAt: new Date() })
+      .where(
+        and(
+          eq(schema.approvals.status, "pending"),
+          eq(schema.approvals.toolName, r.tool.name),
+          ne(schema.approvals.id, row!.id),
+          sql`${schema.approvals.payload}->>${key.field} = ${key.value}`,
+        ),
+      )
+      .returning({ id: schema.approvals.id });
+    for (const s of superseded) {
+      await writeAudit(db, { ...actor, action: "approval.superseded", entityType: "approval", entityId: s.id, metadata: { by: row!.id } });
+    }
+  }
+  await writeAudit(db, {
+    ...actor,
+    action: "approval.requested",
+    entityType: "approval",
+    entityId: row!.id,
+    metadata: { tool: r.tool.name, risk: r.tool.risk, taskId: r.taskId ?? null, automationRunId: r.automationRunId ?? null },
+  });
+  return row!.id;
+}
 
 export function editableFieldsFor(toolName: string): readonly string[] {
   return executorFor(toolName)?.tool.editableFields ?? [];

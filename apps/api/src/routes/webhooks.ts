@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { parseWhatsappWebhook, verifyWhatsappSignature, type TaskQueue } from "@acc/agents";
+import { parseWhatsappWebhook, verifyWhatsappSignature, type TaskQueue, type AutomationQueue } from "@acc/agents";
 import type { Env } from "@acc/config";
 import { and, applyOutboundStatus, eq, ingestInboundMessage, schema, type Database } from "@acc/database";
 import { safeEqual } from "../lib/tokens.js";
+import { emitEvent } from "../lib/automation-events.js";
 
 export interface WebhookRouteOptions {
   db: Database;
   env: Env;
   queue: TaskQueue;
+  automations: AutomationQueue;
 }
 
 /**
@@ -16,7 +18,7 @@ export interface WebhookRouteOptions {
  * available for signature verification (HMAC over the exact bytes Meta sent).
  */
 export async function whatsappWebhookRoutes(app: FastifyInstance, opts: WebhookRouteOptions) {
-  const { db, env, queue } = opts;
+  const { db, env, queue, automations } = opts;
 
   app.removeContentTypeParser("application/json");
   app.addContentTypeParser("application/json", { parseAs: "buffer", bodyLimit: 256 * 1024 }, (_req, body, done) => done(null, body));
@@ -84,6 +86,8 @@ export async function whatsappWebhookRoutes(app: FastifyInstance, opts: WebhookR
         }
         summary.messages++;
         if (r.leadCreated) summary.newLeads++;
+        await emitEvent(automations, req.log, "whatsapp.message_received", { messageId: r.message.id, leadNew: r.leadCreated }, r.message.id);
+        if (r.leadCreated && r.lead) await emitEvent(automations, req.log, "lead.created", { leadId: r.lead.id }, r.lead.id);
         if (env.WHATSAPP_AUTO_TRIAGE && (m.text || m.media)) {
           await queue.enqueueTriage(r.conversation.id, env.WHATSAPP_TRIAGE_DELAY_SECONDS * 1000);
           summary.triaged++;

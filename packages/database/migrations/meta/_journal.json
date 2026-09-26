@@ -36,6 +36,13 @@
       "when": 1790367900686,
       "tag": "0004_approval_execution",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790397808731,
+      "tag": "0005_automations",
+      "breakpoints": true
     }
   ]
 }

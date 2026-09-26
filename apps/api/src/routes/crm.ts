@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { createWhatsappTriageTask, modelAvailability, type TaskQueue } from "@acc/agents";
+import { createWhatsappTriageTask, modelAvailability, type TaskQueue, type AutomationQueue } from "@acc/agents";
 import type { Env } from "@acc/config";
 import {
   and, asc, desc, eq, getOrCreateOpenLead, InvalidPhoneError, isNull, mergeLeadSignals, or, recalculateLeadScore,
@@ -10,11 +10,13 @@ import { BANDS, LEAD_STATUSES, SCORING_RULES, SCORING_VERSION } from "@acc/share
 import { HttpError, notFound, parse } from "../lib/errors.js";
 import { auditMeta } from "../lib/audit.js";
 import { requireAuth } from "../plugins/auth.js";
+import { emitEvent } from "../lib/automation-events.js";
 
 export interface CrmRouteOptions {
   db: Database;
   env: Env;
   queue: TaskQueue;
+  automations: AutomationQueue;
 }
 
 const idParam = z.object({ id: z.string().uuid() });
@@ -52,7 +54,7 @@ const updateLead = z
   .refine((v) => Object.keys(v).length > 0, "Nothing to update");
 
 export async function crmRoutes(app: FastifyInstance, opts: CrmRouteOptions) {
-  const { db, env, queue } = opts;
+  const { db, env, queue, automations } = opts;
 
   app.get("/api/leads/scoring", { preHandler: requireAuth("leads:read") }, async () => ({
     version: SCORING_VERSION,
@@ -123,6 +125,7 @@ export async function crmRoutes(app: FastifyInstance, opts: CrmRouteOptions) {
         entityId: result.lead.id,
         metadata: { source: body.source },
       });
+      if (result.created) await emitEvent(automations, req.log, "lead.created", { leadId: result.lead.id }, result.lead.id);
       return reply.code(result.created ? 201 : 200).send({ lead: { ...result.lead, band: band(result.lead.score) }, contact: result.contact, duplicate: !result.created });
     } catch (e) {
       if (e instanceof InvalidPhoneError) throw new HttpError(400, "VALIDATION_ERROR", e.message, [{ path: "phone", message: e.message }]);

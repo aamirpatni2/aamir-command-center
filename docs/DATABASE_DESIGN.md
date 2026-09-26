@@ -59,6 +59,13 @@ Source of truth: `packages/database/src/schema/*.ts`.
 | `automation_rules` | name, trigger (`event/schedule/webhook`), trigger_config jsonb, conditions jsonb, steps jsonb, policy jsonb (auto-approve scope), enabled, created_by, last_run_at |
 | `memory_items` | kind (`fact/preference/decision/event`), subject, content, source (`user/agent/system`), status (`proposed/approved/rejected`), confidence, source_run_id, approved_by |
 
+### Automations (M10)
+| Table | Key columns | Notes |
+|---|---|---|
+| `automation_rules` | name, trigger (`event/schedule`), trigger_config (the trigger object), conditions, steps (actions), policy (`maxRunsPerHour`), enabled, run_count, last_run_at | soft delete |
+| `automation_runs` | rule_id, event, dedupe_key, status (`running/completed/partial/failed/rate_limited`), context (ids/labels, never message bodies), actions (results), error | **unique (rule_id, dedupe_key)**: one firing per event |
+| `approvals.automation_run_id` | FK | set when an automation (not an agent) requested the action |
+
 ### Knowledge (RAG)
 | Table | Key columns |
 |---|---|

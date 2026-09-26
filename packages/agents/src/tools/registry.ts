@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { and, eq, ne, schema, sql, writeAudit } from "@acc/database";
+import { writeAudit } from "@acc/database";
+import { requestApproval } from "../approvals/service.js";
 import { APPROVAL_REQUIRED_RISKS } from "@acc/shared";
 import type { ToolSpec } from "../model/types.js";
 import type { Tool, ToolContext, ToolOutcome } from "./types.js";
@@ -65,50 +66,16 @@ export class ToolRegistry {
 
     if (APPROVAL_REQUIRED_RISKS.includes(tool.risk)) {
       // Idempotent per tool call: a retried step never creates a second approval.
-      const idempotencyKey = `${ctx.runId}:${call.id}`;
-      const [row] = await ctx.db
-        .insert(schema.approvals)
-        .values({
-          taskId: ctx.taskId,
-          runId: ctx.runId,
-          actionType: tool.risk,
-          toolName: tool.name,
-          risk: tool.risk,
-          title: tool.describe ? tool.describe(parsed.data) : `${ctx.agentId} agent wants to run ${tool.name}`,
-          payload: parsed.data as Record<string, unknown>,
-          requestedByAgent: ctx.agentId,
-          idempotencyKey,
-          expiresAt: new Date(Date.now() + 7 * 24 * 3600_000),
-        })
-        .onConflictDoUpdate({ target: schema.approvals.idempotencyKey, set: { updatedAt: new Date() } })
-        .returning({ id: schema.approvals.id });
-      if (tool.supersedeKey) {
-        const key = tool.supersedeKey(parsed.data);
-        const superseded = await ctx.db
-          .update(schema.approvals)
-          .set({ status: "expired", decisionNote: "Superseded by a newer draft", decidedAt: new Date() })
-          .where(
-            and(
-              eq(schema.approvals.status, "pending"),
-              eq(schema.approvals.toolName, tool.name),
-              ne(schema.approvals.id, row!.id),
-              sql`${schema.approvals.payload}->>${key.field} = ${key.value}`,
-            ),
-          )
-          .returning({ id: schema.approvals.id });
-        for (const s of superseded) {
-          await writeAudit(ctx.db, { actorType: "agent", actorId: ctx.agentId, action: "approval.superseded", entityType: "approval", entityId: s.id, metadata: { by: row!.id } });
-        }
-      }
-      await writeAudit(ctx.db, {
-        actorType: "agent",
-        actorId: ctx.agentId,
-        action: "approval.requested",
-        entityType: "approval",
-        entityId: row!.id,
-        metadata: { tool: tool.name, risk: tool.risk, taskId: ctx.taskId },
+      const approvalId = await requestApproval(ctx.db, {
+        tool,
+        payload: parsed.data as Record<string, unknown>,
+        title: tool.describe ? tool.describe(parsed.data) : `${ctx.agentId} agent wants to run ${tool.name}`,
+        idempotencyKey: `${ctx.runId}:${call.id}`,
+        taskId: ctx.taskId,
+        runId: ctx.runId,
+        agentId: ctx.agentId,
       });
-      return { status: "approval_required", approvalId: row!.id };
+      return { status: "approval_required", approvalId };
     }
 
     const timeoutMs = tool.timeoutMs ?? DEFAULT_TIMEOUT_MS;

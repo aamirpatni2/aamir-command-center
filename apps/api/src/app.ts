@@ -20,8 +20,9 @@ import { contentRoutes } from "./routes/content.js";
 import { knowledgeRoutes } from "./routes/knowledge.js";
 import { whatsappWebhookRoutes } from "./routes/webhooks.js";
 import { approvalRoutes } from "./routes/approvals.js";
+import { automationRoutes } from "./routes/automations.js";
 import { TaskEventHub } from "./lib/task-events.js";
-import { createTaskQueue, WhatsAppClient, type TaskQueue } from "@acc/agents";
+import { createAutomationQueue, createTaskQueue, WhatsAppClient, type AutomationQueue, type TaskQueue } from "@acc/agents";
 
 export interface BuildAppOptions {
   env: Env;
@@ -37,6 +38,8 @@ export interface BuildAppOptions {
   taskQueue?: TaskQueue;
   /** Defaults to the real Cloud API client from env. Tests inject one with a fake fetch. */
   whatsapp?: WhatsAppClient;
+  /** Defaults to the BullMQ automations queue. Tests inject an in-memory one. */
+  automationQueue?: AutomationQueue;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -111,19 +114,21 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   const queue = opts.taskQueue ?? createTaskQueue(env.REDIS_URL);
   const hub = new TaskEventHub(env.REDIS_URL);
+  const automations = opts.automationQueue ?? createAutomationQueue(env.REDIS_URL);
   app.addHook("onClose", async () => {
-    await Promise.allSettled([queue.close(), hub.close()]);
+    await Promise.allSettled([queue.close(), hub.close(), automations.close()]);
   });
   await app.register(taskRoutes, { db, env, queue, hub });
-  await app.register(crmRoutes, { db, env, queue });
-  await app.register(educationRoutes, { db });
+  await app.register(crmRoutes, { db, env, queue, automations });
+  await app.register(educationRoutes, { db, automations });
   await app.register(contentRoutes, { db });
   await app.register(knowledgeRoutes, { db, env });
-  await app.register(whatsappWebhookRoutes, { db, env, queue });
+  await app.register(whatsappWebhookRoutes, { db, env, queue, automations });
   const whatsapp =
     opts.whatsapp ??
     new WhatsAppClient({ accessToken: env.WHATSAPP_ACCESS_TOKEN, phoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID, graphVersion: env.WHATSAPP_GRAPH_VERSION });
   await app.register(approvalRoutes, { db, whatsapp, events: hub });
+  await app.register(automationRoutes, { db, automations });
 
   return app;
 }

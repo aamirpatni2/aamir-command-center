@@ -3,7 +3,7 @@ import { envSchema } from "@acc/config";
 import { createDb, hashPassword, schema, type DbHandle } from "@acc/database";
 import { resetTestDatabase } from "@acc/database/testing";
 import type { Role } from "@acc/shared";
-import type { TaskQueue } from "@acc/agents";
+import type { AutomationQueue, TaskQueue } from "@acc/agents";
 import { buildApp } from "../app.js";
 
 export class MemoryQueue implements TaskQueue {
@@ -20,10 +20,32 @@ export class MemoryQueue implements TaskQueue {
   async close() {}
 }
 
+/** Records automation events and schedule syncs instead of talking to Redis. */
+export class MemoryAutomationQueue implements AutomationQueue {
+  readonly events: { event: string; ref: Record<string, unknown>; refId: string }[] = [];
+  readonly schedules = new Map<string, { active: boolean; cron?: string }>();
+  readonly manualRuns: string[] = [];
+  fail = false;
+  async emit(event: string, ref: Record<string, unknown>, refId: string) {
+    if (this.fail) throw new Error("redis down");
+    this.events.push({ event, ref, refId });
+  }
+  async syncSchedule(rule: { id: string; active: boolean; cron?: string }) {
+    if (this.fail) throw new Error("redis down");
+    this.schedules.set(rule.id, { active: rule.active, cron: rule.cron });
+  }
+  async runNow(ruleId: string) {
+    if (this.fail) throw new Error("redis down");
+    this.manualRuns.push(ruleId);
+  }
+  async close() {}
+}
+
 export interface TestContext {
   app: FastifyInstance;
   handle: DbHandle;
   queue: MemoryQueue;
+  automations: MemoryAutomationQueue;
 }
 
 export async function setupTestApp(
@@ -46,9 +68,10 @@ export async function setupTestApp(
   });
   const queue = new MemoryQueue();
   const handle = createDb(url, { max: 5 });
-  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue, ...extra });
+  const automations = new MemoryAutomationQueue();
+  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, taskQueue: queue, automationQueue: automations, ...extra });
   await app.ready();
-  return { app, handle, queue };
+  return { app, handle, queue, automations };
 }
 
 export async function teardown(ctx: TestContext) {

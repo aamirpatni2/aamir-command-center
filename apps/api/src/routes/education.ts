@@ -5,6 +5,8 @@ import {
   notInArray, schema, sql, upsertContactByPhone, writeAudit, type Database,
 } from "@acc/database";
 import { CERTIFICATE_RULES, CERTIFICATE_RULES_VERSION, CONTENT_LANGUAGES } from "@acc/shared";
+import type { AutomationQueue } from "@acc/agents";
+import { emitEvent } from "../lib/automation-events.js";
 import { conflict, HttpError, notFound, parse } from "../lib/errors.js";
 import { auditMeta } from "../lib/audit.js";
 import { requireAuth } from "../plugins/auth.js";
@@ -91,7 +93,7 @@ const submissionBody = z.object({
 const pgCode = (e: unknown) => (e as { cause?: { code?: string } }).cause?.code ?? (e as { code?: string }).code;
 const toDate = (s: string | null | undefined) => (s === undefined ? undefined : s === null ? null : new Date(s));
 
-export async function educationRoutes(app: FastifyInstance, opts: { db: Database }) {
+export async function educationRoutes(app: FastifyInstance, opts: { db: Database; automations: AutomationQueue }) {
   const { db } = opts;
   const audit = (req: FastifyRequest, action: string, entityType: string, entityId: string, metadata?: Record<string, unknown>) =>
     writeAudit(db, { ...auditMeta(req), action, entityType, entityId, metadata });
@@ -315,6 +317,7 @@ export async function educationRoutes(app: FastifyInstance, opts: { db: Database
       throw conflict(`Payment is already ${exists.status}`);
     }
     await audit(req, "payment.verify", "payment", id, { amountMinor: result.payment.amountMinor, activated: result.activated });
+    await emitEvent(opts.automations, req.log, "payment.verified", { paymentId: id }, id);
     return result;
   });
 
