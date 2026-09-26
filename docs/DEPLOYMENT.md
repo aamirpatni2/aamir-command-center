@@ -42,6 +42,15 @@ The same production setup runs on your computer at `https://localhost`, which is
   COMPOSE_FILE=docker-compose.yml:docker-compose.mailtest.yml docker compose up -d
   ```
 
+### Keep an up-to-date copy on your PC automatically (Windows)
+
+1. Install **Git for Windows** from https://git-scm.com/download/win (default options). It is not the same as "GitHub Desktop", which you don't need.
+2. From the project (GitHub or the zip), double-click **`scripts\windows\setup-pc-sync.bat`**. Press Enter to use `Documents\aamir-command-center`, and sign in to GitHub if a window asks (once).
+3. From then on, every hour while you're signed in to Windows:
+   - the project folder is updated from GitHub (only forward: your own local edits are never overwritten);
+   - once a day a full backup file with the complete history is written to `Documents\aamir-command-center-backups` (last 14 days kept). Restore one with `git clone <file>.bundle <folder>`.
+4. Log: `%LOCALAPPDATA%\AamirCommandCenter\sync.log`. Stop it any time with `scripts\windows\remove-pc-sync.bat` (keeps your folder and backups).
+
 ## 1. What you need
 
 - **A server**: Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40 GB disk is plenty to start. A region near Pakistan (Mumbai, Bangalore, Singapore, Dubai) keeps the dashboard snappy.

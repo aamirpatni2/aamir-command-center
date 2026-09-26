@@ -4,3 +4,6 @@
 deploy/Caddyfile text eol=lf
 Dockerfile text eol=lf
 *.yml text eol=lf
+# Windows batch files need CRLF line endings (labels and goto can misbehave with LF).
+*.bat text eol=crlf
+*.cmd text eol=crlf
