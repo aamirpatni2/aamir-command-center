@@ -19,6 +19,9 @@ const PUBLIC = new Set([
   "GET /api/webhooks/whatsapp",
   "POST /api/webhooks/whatsapp",
   "GET /api/integrations/oauth/callback",
+  // The emailed invite/reset links: the single-use token is the credential.
+  "POST /api/invites/lookup",
+  "POST /api/invites/accept",
 ]);
 /** Mutations any signed-in user may make on their own account. */
 const SELF_SERVICE = new Set(["POST /api/auth/logout", "POST /api/auth/logout-all", "POST /api/auth/password"]);

@@ -26,6 +26,8 @@ import { automationRoutes } from "./routes/automations.js";
 import { integrationRoutes } from "./routes/integrations.js";
 import { analyticsRoutes } from "./routes/analytics.js";
 import { registerWeb } from "./routes/web.js";
+import { inviteRoutes } from "./routes/invites.js";
+import { createMailer, type Mailer } from "./lib/mailer.js";
 import { TaskEventHub } from "./lib/task-events.js";
 import {
   createAutomationQueue, createTaskQueue, MetaAdsClient, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, WhatsAppClient,
@@ -58,6 +60,8 @@ export interface BuildAppOptions {
   oauthFetch?: typeof fetch;
   /** Read-only Meta ads client (tests inject one with a fake fetch). */
   ads?: MetaAdsClient;
+  /** Outgoing email (invites, reset links). Defaults to SMTP from env, a dev outbox, or off. */
+  mailer?: Mailer;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -151,7 +155,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     loginIpRateLimit: opts.rateLimit?.loginIp ?? { max: env.LOGIN_IP_LIMIT, timeWindow: "15 minutes" },
     limits,
   });
-  await app.register(userRoutes, { db });
+  const mailer = opts.mailer ?? createMailer(env, { outboxDir: `${REPO_ROOT}/data/outbox` });
+  await app.register(userRoutes, { db, mailer, secret: env.SESSION_SECRET, publicUrl: env.PUBLIC_URL });
+  await app.register(inviteRoutes, { db, secret: env.SESSION_SECRET });
   await app.register(auditRoutes, { db });
   await app.register(dashboardRoutes, { db });
 

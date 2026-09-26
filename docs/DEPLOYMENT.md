@@ -16,6 +16,32 @@ Everything runs from one folder, `deploy/`, with Docker Compose:
 
 ---
 
+## 0. Run it on your own PC first (optional, ~15 minutes)
+
+The same production setup runs on your computer at `https://localhost`, which is a good way to try everything before renting a server.
+
+1. Install **Docker Desktop** (Windows or Mac) and start it. On Windows also install **Git for Windows** (it includes "Git Bash").
+2. Get the code: `git clone https://github.com/aamirpatni2/aamir-command-center.git`, or unzip the backup zip.
+3. Open **Git Bash** (Windows) or Terminal (Mac/Linux) and run:
+
+   ```bash
+   cd aamir-command-center/deploy
+   ./start-local.sh
+   ```
+
+   The first run creates the settings with fresh secrets, builds and starts everything (a few minutes), then asks for your name, email and a password for the owner account.
+4. Open **https://localhost**. The browser warns about the certificate once: it was made on your own computer, not by a public authority. Choose *Advanced → Continue to localhost*.
+
+- Stop: `docker compose down` (your data is kept). Start again: `./start-local.sh`.
+- Add API keys any time in `deploy/app.env`, then run `./start-local.sh` again.
+- If ports 80/443 are taken by another program, stop that program (or see `HTTP_PORT`/`HTTPS_PORT` in `deploy/.env.example`).
+- To try email invites without real email, add Mailpit (a local mail catcher) and open http://localhost:8025 to read what was "sent":
+
+  ```bash
+  # in deploy/app.env:  SMTP_URL=smtp://mailpit:1025   EMAIL_FROM=Command Center <team@example.test>
+  COMPOSE_FILE=docker-compose.yml:docker-compose.mailtest.yml docker compose up -d
+  ```
+
 ## 1. What you need
 
 - **A server**: Ubuntu 24.04, 2 vCPU, 4 GB RAM, 40 GB disk is plenty to start. A region near Pakistan (Mumbai, Bangalore, Singapore, Dubai) keeps the dashboard snappy.
@@ -74,7 +100,7 @@ docker compose run --rm --no-deps \
   api node --import tsx packages/database/scripts/create-owner.ts
 ```
 
-Then remove that line from your shell history (`history -d $(history 1 | awk '{print $1}')`) and sign in. Then add your team on the **Team** page (System → Team): each person gets their own account and role, with a one-time temporary password to pass on privately. Never share logins.
+Then remove that line from your shell history (`history -d $(history 1 | awk '{print $1}')`) and sign in. Then add your team on the **Team** page (System → Team): each person gets their own account and role. With email set up (§6) they get an invite link and choose their own password; otherwise you pass on a one-time temporary password privately. Never share logins.
 
 ## 6. Connect the integrations
 
@@ -83,6 +109,7 @@ Then remove that line from your shell history (`history -d $(history 1 | awk '{p
 | WhatsApp webhook | Meta for Developers → your app → WhatsApp → Configuration | Callback URL `https://<domain>/api/webhooks/whatsapp`, Verify token = your `WHATSAPP_VERIFY_TOKEN`; subscribe to `messages` |
 | Google Workspace | Google Cloud Console → Credentials → OAuth client (Web) | Authorized redirect URI `https://<domain>/api/integrations/oauth/callback` |
 | Canva | Canva Developers → your integration | Redirect URL `https://<domain>/api/integrations/oauth/callback` |
+| Email (invites, reset links) | Your mail provider's SMTP settings | In `app.env`: `SMTP_URL=smtps://user:password@smtp.example.com:465` and `EMAIL_FROM=Aamir AI Command Center <team@yourdomain.com>`. With Gmail, create an *app password* (Google Account → Security → 2-Step Verification → App passwords) and use `smtps://you%40gmail.com:APP-PASSWORD@smtp.gmail.com:465`. Without it, the Team page uses temporary passwords. |
 
 After changing `app.env`: `docker compose up -d` (restarts only what changed). The **Integrations** page shows what's configured and connected.
 

@@ -23,6 +23,12 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/users` | `users:manage` | `{email, name, role, password(12+)}` → 201 |
 | PATCH | `/api/users/:id` | `users:manage` | `{name?, email?, role?, isActive?}`; email is lower-cased and must be unused (deactivated accounts keep theirs) → 409 `CONFLICT`; you can edit your own name/email but not demote or deactivate yourself or the last owner; role/active changes revoke that user's sessions; audited with before/after |
 | POST | `/api/users/:id/password` | `users:manage` | `{password(12+)}` → `{ok}`: the owner sets a temporary password for a team member (not for yourself: use `/api/auth/password`); weak-password rules; signs them out everywhere; audited `user.password_reset` |
+| POST | `/api/users` (invite) | `users:manage` | `{email, name, role, sendInvite: true}` instead of `password` → 201 `{user, invite: {status: sent\|mock\|failed, expiresAt, error?}}`; 400 `EMAIL_NOT_CONFIGURED` without SMTP; a link that couldn't be delivered is revoked |
+| GET | `/api/users` | `users:read` | also returns `emailMode` (`smtp`/`mock`/`off`) and per user `invite: {expiresAt, expired} \| null` |
+| POST | `/api/users/:id/invite` | `users:manage` | resend an invite (old link stops working); 409 `ALREADY_JOINED` once they've signed in, `INACTIVE` if deactivated |
+| POST | `/api/users/:id/reset-link` | `users:manage` | email a 1-hour password-reset link (not for yourself) |
+| POST | `/api/invites/lookup` | public (20/15 min per IP) | `{token}` → `{purpose, name, email, expiresAt}` or 400 `INVALID_LINK` |
+| POST | `/api/invites/accept` | public (20/15 min per IP) | `{token, password(12+)}` → `{ok, email, purpose}`; weak-password check before the link is used; single use; signs the person out everywhere; other open links revoked; audited |
 | GET | `/api/audit-logs` | `audit:read` | `?limit&before&action&entityType` → `{auditLogs, nextBefore}` |
 | GET | `/api/agents` | `tasks:read` | defined agents (description, current limitations, tools, model, effort, max steps) + model availability `{available, mock, reason?}` |
 | POST | `/api/tasks` | `tasks:create` | `{input (3–4000 chars), title?}` → 202 `{task, mock}` and enqueues it. 503 `MODEL_NOT_CONFIGURED` (nothing created) or `QUEUE_UNAVAILABLE` (task marked FAILED) |

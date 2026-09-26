@@ -64,6 +64,13 @@
       "when": 1790407182922,
       "tag": "0008_audit_log_immutable",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790431211950,
+      "tag": "0009_user_tokens",
+      "breakpoints": true
     }
   ]
 }

@@ -27,8 +27,9 @@ test("team page: add a member, reset their password, change role, deactivate", a
   // Add, and read the one-time temporary password.
   const add = page.locator("section").filter({ hasText: "Add a team member" });
   await add.getByLabel("Name").fill(name);
-  await add.getByLabel("Email").fill(email);
+  await add.getByLabel("Email", { exact: true }).fill(email);
   await add.getByLabel("Role").selectOption("operator");
+  await add.getByLabel(/Temporary password/).first().check();
   await add.getByRole("button", { name: "Add member" }).click();
   const temp = (await add.getByTestId("temp-password").textContent())!;
   expect(temp).toMatch(/^[\w]{6}-[\w]{6}-[\w]{6}$/);
@@ -45,7 +46,7 @@ test("team page: add a member, reset their password, change role, deactivate", a
   await expect(member.page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Team" })).toHaveCount(0);
 
   // Reset: a new temporary password; their session ends; the old one stops working.
-  await row.getByRole("button", { name: "Reset password" }).click();
+  await row.getByRole("button", { name: "Temporary password" }).click();
   const fresh = (await row.getByTestId("temp-password").textContent())!;
   expect(fresh).not.toBe(temp);
   await member.page.reload();

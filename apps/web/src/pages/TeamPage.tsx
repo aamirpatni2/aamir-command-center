@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronRight, Copy, Crown, Eye, KeyRound, Pencil, RefreshCw, ShieldCheck, UserPlus, UsersRound, Wrench } from "lucide-react";
+import { Check, ChevronRight, Copy, Crown, Eye, KeyRound, Mail, Pencil, RefreshCw, ShieldCheck, UserPlus, UsersRound, Wrench } from "lucide-react";
 import { Button, Card, cn, EmptyState, Field, StatusBadge } from "@acc/ui";
 import { ROLES, type Role } from "@acc/shared";
 import { api, ApiError } from "../lib/api.js";
@@ -17,6 +17,41 @@ interface Member {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  /** An emailed invite that hasn't been used yet. */
+  invite: { expiresAt: string; expired: boolean } | null;
+}
+type EmailMode = "smtp" | "mock" | "off";
+interface LinkResult {
+  status: "sent" | "mock" | "failed" | "not_configured";
+  expiresAt: string;
+  error?: string;
+}
+
+/** "in 3 days" / "in 5 h" / "in 20 min". */
+function until(iso: string) {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return "now";
+  const min = Math.round(ms / 60_000);
+  if (min < 90) return `in ${min} min`;
+  const h = Math.round(min / 60);
+  return h < 36 ? `in ${h} h` : `in ${Math.round(h / 24)} days`;
+}
+
+/** What happened to an emailed link, in plain words. */
+function LinkOutcome({ what, to, result, onDone }: { what: "invite" | "reset"; to: string; result: LinkResult; onDone: () => void }) {
+  const label = what === "invite" ? "Invite" : "Reset link";
+  const ok = result.status === "sent" || result.status === "mock";
+  return (
+    <div role={ok ? "status" : "alert"} className={cn("flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm", ok ? "border-status-good/30 bg-status-good/10 text-ink" : "border-status-critical/30 bg-status-critical/10 text-ink")}>
+      <p className="flex-1">
+        {result.status === "sent" && <>{label} emailed to <strong>{to}</strong>. The link works once and expires {until(result.expiresAt)}.</>}
+        {result.status === "mock" && <>Development mode: the {what === "invite" ? "invite" : "reset"} email for <strong>{to}</strong> was saved to <code>data/outbox</code>, not sent.</>}
+        {result.status === "failed" && <>Couldn't send the email to <strong>{to}</strong>: {result.error}. {what === "invite" ? "They're added; try Resend invite, or set a temporary password instead." : "Try again, or set a temporary password instead."}</>}
+        {result.status === "not_configured" && <>Email isn't set up, so nothing was sent.</>}
+      </p>
+      <Button type="button" variant="ghost" onClick={onDone}>Done</Button>
+    </div>
+  );
 }
 
 /** Plain-language summary of what each role can do (the rules live in packages/shared/src/roles.ts). */
@@ -61,30 +96,34 @@ function PasswordReveal({ email, password, onDone }: { email: string; password: 
   );
 }
 
-function AddMember({ onAdded }: { onAdded: () => void }) {
+function AddMember({ emailMode, onAdded }: { emailMode: EmailMode; onAdded: () => void }) {
+  const canEmail = emailMode !== "off";
+  const [method, setMethod] = useState<"invite" | "password">(canEmail ? "invite" : "password");
   const [password, setPassword] = useState(generatePassword);
-  const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ email: string; password?: string; invite?: LinkResult } | null>(null);
   const m = useMutation({
-    mutationFn: (body: { name: string; email: string; role: Role; password: string }) => api<{ user: Member }>("/api/users", { method: "POST", body }),
+    mutationFn: (body: { name: string; email: string; role: Role; password?: string; sendInvite?: boolean }) =>
+      api<{ user: Member; invite?: LinkResult }>("/api/users", { method: "POST", body }),
     onSuccess: (res, body) => {
-      setCreated({ email: res.user.email, password: body.password });
+      setCreated({ email: res.user.email, password: body.password, invite: res.invite });
       setPassword(generatePassword());
       onAdded();
     },
   });
+  const useInvite = canEmail && method === "invite";
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    m.mutate(
-      { name: String(f.get("name")), email: String(f.get("email")), role: String(f.get("role")) as Role, password },
-      { onSuccess: () => (e.target as HTMLFormElement).reset() },
-    );
+    const base = { name: String(f.get("name")), email: String(f.get("email")), role: String(f.get("role")) as Role };
+    m.mutate(useInvite ? { ...base, sendInvite: true } : { ...base, password }, { onSuccess: () => (e.target as HTMLFormElement).reset() });
   }
 
   return (
     <Card title="Add a team member" icon={<UserPlus className="size-4" />}>
-      {created ? (
+      {created?.invite ? (
+        <LinkOutcome what="invite" to={created.email} result={created.invite} onDone={() => setCreated(null)} />
+      ) : created?.password ? (
         <PasswordReveal email={created.email} password={created.password} onDone={() => setCreated(null)} />
       ) : (
         <form className="space-y-3" onSubmit={submit}>
@@ -93,18 +132,39 @@ function AddMember({ onAdded }: { onAdded: () => void }) {
           <Select label="Role" name="role" defaultValue="operator">
             {ROLES.map((r) => <option key={r} value={r}>{ROLE_INFO[r].label}</option>)}
           </Select>
-          <div className="space-y-1.5">
-            <span className="block text-sm font-medium text-ink-2">Temporary password</span>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-xl border border-line bg-surface-1 px-3 py-2 font-mono text-sm text-ink">{password}</code>
-              <Button type="button" variant="ghost" onClick={() => setPassword(generatePassword())} aria-label="Generate another password">
-                <RefreshCw className="size-4" aria-hidden />
-              </Button>
+          <fieldset className="space-y-1.5">
+            <legend className="mb-1.5 block text-sm font-medium text-ink-2">How they get in</legend>
+            <label className={cn("flex items-start gap-2 rounded-xl border border-line px-3 py-2 text-sm", canEmail ? "cursor-pointer" : "opacity-60")}>
+              <input type="radio" name="method" className="mt-0.5" checked={useInvite} disabled={!canEmail} onChange={() => setMethod("invite")} />
+              <span>
+                <span className="font-medium text-ink">Email an invite</span>
+                <span className="block text-xs text-ink-3">They choose their own password from a link (works once, 3 days).</span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-line px-3 py-2 text-sm">
+              <input type="radio" name="method" className="mt-0.5" checked={!useInvite} onChange={() => setMethod("password")} />
+              <span>
+                <span className="font-medium text-ink">Temporary password</span>
+                <span className="block text-xs text-ink-3">You pass it on privately; they change it in Settings.</span>
+              </span>
+            </label>
+            {!canEmail && <p className="text-xs text-ink-3">Email isn't set up, so invites can't be sent. Add SMTP_URL and EMAIL_FROM (see the deployment guide) to turn them on.</p>}
+            {emailMode === "mock" && <p className="text-xs text-status-warning">Development: emails are saved to data/outbox instead of being sent.</p>}
+          </fieldset>
+          {!useInvite && (
+            <div className="space-y-1.5">
+              <span className="block text-sm font-medium text-ink-2">Temporary password</span>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded-xl border border-line bg-surface-1 px-3 py-2 font-mono text-sm text-ink">{password}</code>
+                <Button type="button" variant="ghost" onClick={() => setPassword(generatePassword())} aria-label="Generate another password">
+                  <RefreshCw className="size-4" aria-hidden />
+                </Button>
+              </div>
+              <p className="text-xs text-ink-3">Generated here in your browser. You'll see it once more after adding, to pass on.</p>
             </div>
-            <p className="text-xs text-ink-3">Generated here in your browser. You'll see it once more after adding, to pass on.</p>
-          </div>
+          )}
           {m.isError && <p role="alert" className="text-sm text-status-critical">{errorText(m.error)}</p>}
-          <Button type="submit" disabled={m.isPending}>Add member</Button>
+          <Button type="submit" disabled={m.isPending}>{useInvite ? "Add and send invite" : "Add member"}</Button>
         </form>
       )}
     </Card>
@@ -147,10 +207,24 @@ function EditDetails({ member, isYou, onSaved, onCancel }: { member: Member; isY
   );
 }
 
-function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; isYou: boolean; canManage: boolean; onChanged: () => void }) {
+function MemberRow({ member, isYou, canManage, emailMode, onChanged }: { member: Member; isYou: boolean; canManage: boolean; emailMode: EmailMode; onChanged: () => void }) {
   const [reset, setReset] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [sent, setSent] = useState<{ what: "invite" | "reset"; result: LinkResult } | null>(null);
+  const emailLink = useMutation({
+    mutationFn: async (what: "invite" | "reset") =>
+      what === "invite"
+        ? (await api<{ invite: LinkResult }>(`/api/users/${member.id}/invite`, { method: "POST", body: {} })).invite
+        : (await api<{ link: LinkResult }>(`/api/users/${member.id}/reset-link`, { method: "POST", body: {} })).link,
+    onSuccess: (result, what) => {
+      setError(null);
+      setSent({ what, result });
+      onChanged();
+    },
+    onError: (e) => setError(errorText(e)),
+  });
+  const canEmail = emailMode !== "off";
   const update = useMutation({
     mutationFn: (body: { role?: Role; isActive?: boolean }) => api(`/api/users/${member.id}`, { method: "PATCH", body }),
     onSuccess: () => {
@@ -213,13 +287,35 @@ function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; is
         </div>
         <div className="w-32"><StatusBadge status={member.isActive ? "active" : "disabled"} label={member.isActive ? "Active" : "Deactivated"} /></div>
         <p className="w-36 text-sm text-ink-3" title={member.lastLoginAt ? formatDateTime(member.lastLoginAt) : undefined}>
-          {member.lastLoginAt ? `Signed in ${timeAgo(member.lastLoginAt)}` : "Never signed in"}
+          {member.lastLoginAt
+            ? `Signed in ${timeAgo(member.lastLoginAt)}`
+            : member.invite
+              ? member.invite.expired
+                ? <StatusBadge status="expired" label="Invite expired" />
+                : <span title={formatDateTime(member.invite.expiresAt)}><StatusBadge status="pending" label="Invited" /> <span className="text-xs">expires {until(member.invite.expiresAt)}</span></span>
+              : "Never signed in"}
         </p>
         {canManage && !editing && (
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setEditing(true)}>
               <Pencil className="size-4" aria-hidden /> Edit
             </Button>
+            {editable && member.isActive && canEmail && !member.lastLoginAt && (
+              <Button variant="ghost" disabled={emailLink.isPending} onClick={() => emailLink.mutate("invite")}>
+                <Mail className="size-4" aria-hidden /> Resend invite
+              </Button>
+            )}
+            {editable && member.isActive && canEmail && member.lastLoginAt && (
+              <Button
+                variant="ghost"
+                disabled={emailLink.isPending}
+                onClick={() => {
+                  if (confirm(`Email ${member.name} a link to choose a new password? It works once, for 1 hour, and signs them out everywhere when used.`)) emailLink.mutate("reset");
+                }}
+              >
+                <Mail className="size-4" aria-hidden /> Email reset link
+              </Button>
+            )}
             {editable && member.isActive && (
               <Button
                 variant="ghost"
@@ -228,7 +324,7 @@ function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; is
                   if (confirm(`Set a new temporary password for ${member.name}? They'll be signed out everywhere.`)) resetPassword.mutate(generatePassword());
                 }}
               >
-                <KeyRound className="size-4" aria-hidden /> Reset password
+                <KeyRound className="size-4" aria-hidden /> Temporary password
               </Button>
             )}
             {editable && (
@@ -250,6 +346,7 @@ function MemberRow({ member, isYou, canManage, onChanged }: { member: Member; is
       </div>
       {error && <p role="alert" className="text-sm text-status-critical">{error}</p>}
       {reset && <PasswordReveal email={member.email} password={reset} onDone={() => setReset(null)} />}
+      {sent && <LinkOutcome what={sent.what} to={member.email} result={sent.result} onDone={() => setSent(null)} />}
     </li>
   );
 }
@@ -260,7 +357,8 @@ export function TeamPage() {
   const { session, can } = useAuth();
   const qc = useQueryClient();
   const canManage = can("users:manage");
-  const q = useQuery({ queryKey: ["users"], queryFn: ({ signal }) => api<{ users: Member[] }>("/api/users", { signal }) });
+  const q = useQuery({ queryKey: ["users"], queryFn: ({ signal }) => api<{ users: Member[]; emailMode: EmailMode }>("/api/users", { signal }) });
+  const emailMode = q.data?.emailMode ?? "off";
   const refresh = () => void qc.invalidateQueries({ queryKey: ["users"] });
   const members = q.data?.users ?? [];
   const active = members.filter((m) => m.isActive);
@@ -290,7 +388,7 @@ export function TeamPage() {
           ) : (
             <>
               <ul className="-mx-5 divide-y divide-line border-t border-line" aria-label="Active members">
-                {sortMembers(active).map((m) => <MemberRow key={m.id} member={m} isYou={m.id === session?.user.id} canManage={canManage} onChanged={refresh} />)}
+                {sortMembers(active).map((m) => <MemberRow key={m.id} member={m} isYou={m.id === session?.user.id} canManage={canManage} emailMode={emailMode} onChanged={refresh} />)}
               </ul>
               {inactive.length > 0 && (
                 <div className="-mx-5 -mb-5 border-t border-line">
@@ -305,7 +403,7 @@ export function TeamPage() {
                   </button>
                   {showInactive && (
                     <ul className="divide-y divide-line border-t border-line" aria-label="Deactivated members">
-                      {sortMembers(inactive).map((m) => <MemberRow key={m.id} member={m} isYou={m.id === session?.user.id} canManage={canManage} onChanged={refresh} />)}
+                      {sortMembers(inactive).map((m) => <MemberRow key={m.id} member={m} isYou={m.id === session?.user.id} canManage={canManage} emailMode={emailMode} onChanged={refresh} />)}
                     </ul>
                   )}
                 </div>
@@ -314,7 +412,7 @@ export function TeamPage() {
           )}
         </Card>
         <div className="space-y-4">
-          {canManage && <AddMember onAdded={refresh} />}
+          {canManage && q.data && <AddMember emailMode={emailMode} onAdded={refresh} />}
           <Card title="What each role can do" icon={<ShieldCheck className="size-4" />}>
             <dl className="space-y-3 text-sm">
               {ROLES.map((r) => {

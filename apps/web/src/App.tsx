@@ -7,6 +7,7 @@ import { DashboardPage } from "./pages/DashboardPage.js";
 import { LogsPage } from "./pages/LogsPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { TeamPage } from "./pages/TeamPage.js";
+import { InvitePage } from "./pages/InvitePage.js";
 import { ComingSoonPage } from "./pages/ComingSoonPage.js";
 import { TasksPage } from "./pages/TasksPage.js";
 import { TaskDetailPage } from "./pages/TaskDetailPage.js";
@@ -85,6 +86,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/invite" element={<InvitePage />} />
       <Route
         element={
           <RequireAuth>

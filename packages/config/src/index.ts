@@ -76,6 +76,10 @@ export const envSchema = z
     /** Read by mcp.config.json (${env:GITHUB_TOKEN}); fine-grained, read-only. */
     GITHUB_TOKEN: optionalString,
     MCP_CONFIG: optionalString,
+    /** Outgoing email (invites, reset links): smtps://user:pass@host:465 or smtp://user:pass@host:587 (STARTTLS). */
+    SMTP_URL: optionalString.refine((v) => v === undefined || /^smtps?:\/\//.test(v), "must start with smtp:// or smtps://"),
+    /** Sender shown in emails, e.g. "Aamir AI Command Center <team@yourdomain.com>". */
+    EMAIL_FROM: optionalString,
     /** Production: serve the built dashboard (apps/web/dist) from the API, same origin. */
     WEB_DIST_DIR: optionalString,
 
@@ -159,5 +163,6 @@ export function integrationStatus(env: NodeJS.ProcessEnv = process.env) {
     canva: has("CANVA_CLIENT_ID", "CANVA_CLIENT_SECRET"),
     meta_ads: has("META_ADS_ACCESS_TOKEN", "META_AD_ACCOUNT_ID"),
     notion: has("NOTION_TOKEN"),
+    email: has("SMTP_URL", "EMAIL_FROM"),
   } as const;
 }

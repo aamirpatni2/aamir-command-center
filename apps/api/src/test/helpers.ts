@@ -6,6 +6,7 @@ import type { Role } from "@acc/shared";
 import { McpClientManager, type AutomationQueue, type TaskQueue } from "@acc/agents";
 import { buildApp } from "../app.js";
 import { MemoryWindowStore } from "../lib/window-store.js";
+import { MemoryMailer } from "../lib/mailer.js";
 
 export class MemoryQueue implements TaskQueue {
   readonly jobs: string[] = [];
@@ -57,7 +58,7 @@ export async function setupTestApp(
     agentRuns: { max: 10_000, windowMs: 60_000 },
   },
   envOverrides: Record<string, string> = {},
-  extra: Pick<Parameters<typeof buildApp>[0], "whatsapp" | "mcp" | "oauthFetch" | "ads"> = {},
+  extra: Pick<Parameters<typeof buildApp>[0], "whatsapp" | "mcp" | "oauthFetch" | "ads" | "mailer"> = {},
 ): Promise<TestContext> {
   const url = await resetTestDatabase();
   const env = envSchema.parse({
@@ -73,7 +74,7 @@ export async function setupTestApp(
   const automations = new MemoryAutomationQueue();
   // No MCP servers in API tests unless a test injects its own manager.
   const mcp = extra.mcp ?? new McpClientManager({ servers: [] }, { root: process.cwd() });
-  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, limits: new MemoryWindowStore(), taskQueue: queue, automationQueue: automations, ...extra, mcp });
+  const app = await buildApp({ env, db: handle.db, logger: false, rateLimit, limits: new MemoryWindowStore(), mailer: extra.mailer ?? new MemoryMailer("off"), taskQueue: queue, automationQueue: automations, ...extra, mcp });
   await app.ready();
   return { app, handle, queue, automations };
 }

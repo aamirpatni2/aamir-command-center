@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useLocation } from "react-router";
+import { Navigate, useLocation, useSearchParams } from "react-router";
 import { Button, Field } from "@acc/ui";
 import { useAuth } from "../lib/auth.js";
 import { ApiError } from "../lib/api.js";
@@ -8,6 +8,8 @@ import { BrandMark } from "../components/Layout.js";
 export function LoginPage() {
   const { status, login } = useAuth();
   const location = useLocation();
+  const [params] = useSearchParams();
+  const done = params.get("done"); // arriving from an invite / reset link
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -49,8 +51,13 @@ export function LoginPage() {
           <p className="mt-1.5 text-sm text-ink-2">Sign in to your agents, approvals and pipeline</p>
         </div>
         <form onSubmit={onSubmit} className="glass space-y-4 rounded-3xl p-7 shadow-pop">
-          <Field label="Email" name="email" type="email" autoComplete="username" required autoFocus />
-          <Field label="Password" name="password" type="password" autoComplete="current-password" required />
+          {done && (
+            <p role="status" className="rounded-xl border border-status-good/30 bg-status-good/10 px-3 py-2 text-sm text-status-good">
+              {done === "reset" ? "Password changed." : "Your password is set."} Sign in to continue.
+            </p>
+          )}
+          <Field label="Email" name="email" type="email" autoComplete="username" required autoFocus={!done} defaultValue={params.get("email") ?? undefined} />
+          <Field label="Password" name="password" type="password" autoComplete="current-password" required autoFocus={!!done} />
           {error && (
             <p role="alert" className="rounded-xl border border-status-critical/30 bg-status-critical/10 px-3 py-2 text-sm text-status-critical">
               {error}

@@ -35,6 +35,23 @@ export const createUserRequestSchema = z.object({
 });
 export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
 
+/** Adding a team member: either the owner sets a temporary password, or an invite link is emailed. */
+export const addMemberRequestSchema = createUserRequestSchema
+  .extend({ password: newPasswordSchema.optional(), sendInvite: z.boolean().optional() })
+  .refine((v) => (v.sendInvite === true) !== (v.password !== undefined), "Either set a temporary password or send an invite, not both");
+export type AddMemberRequest = z.infer<typeof addMemberRequestSchema>;
+
+/** Emailed links carry a 256-bit base64url token (43 characters). */
+export const linkTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/, "Invalid link");
+export const acceptLinkSchema = z.object({ token: linkTokenSchema, password: newPasswordSchema });
+export type LinkPurpose = "invite" | "reset";
+export interface LinkInfo {
+  purpose: LinkPurpose;
+  name: string;
+  email: string;
+  expiresAt: string;
+}
+
 export interface PublicUser {
   id: string;
   email: string;

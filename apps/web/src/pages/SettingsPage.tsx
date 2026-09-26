@@ -17,6 +17,7 @@ const INTEGRATION_LABELS: Record<string, { label: string; milestone: number }> =
   canva: { label: "Canva", milestone: 11 },
   meta_ads: { label: "Meta Ads (read-only)", milestone: 12 },
   notion: { label: "Notion", milestone: 11 },
+  email: { label: "Email (SMTP) for invites and reset links", milestone: 15 },
 };
 
 function ChangePassword() {

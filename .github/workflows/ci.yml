@@ -141,6 +141,8 @@ jobs:
     env:
       E2E_EMAIL: stack-owner@example.test
       E2E_PASSWORD: stack-owner-password-for-ci
+      # Mailpit (test SMTP server) alongside the production stack, so invites go over real SMTP.
+      COMPOSE_FILE: docker-compose.yml:docker-compose.mailtest.yml
     steps:
       - uses: actions/checkout@v4
       - name: Build the image
@@ -152,10 +154,11 @@ jobs:
           # Test-only additions: a known webhook secret and higher limits (one account, many parallel tests).
           printf "WHATSAPP_APP_SECRET=dev-local-secret\nWHATSAPP_TRIAGE_DELAY_SECONDS=3\n" >> app.env
           sed -i "s|^RATE_LIMIT_PER_MINUTE=.*|RATE_LIMIT_PER_MINUTE=5000|; s|^LOGIN_IP_LIMIT=.*|LOGIN_IP_LIMIT=1000|" app.env
+          sed -i "s|^SMTP_URL=.*|SMTP_URL=smtp://mailpit:1025|; s|^EMAIL_FROM=.*|EMAIL_FROM=Command Center <team@example.test>|" app.env
       - name: Start the stack
         working-directory: deploy
         run: |
-          docker compose up -d --no-build --wait --wait-timeout 180 postgres redis api worker caddy backup
+          docker compose up -d --no-build --wait --wait-timeout 180 postgres redis api worker caddy backup mailpit
           docker compose ps -a
           docker compose logs migrate | tail -3
           curl -skf https://localhost/api/health
@@ -178,12 +181,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Install Chromium
         run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD= pnpm exec playwright install --with-deps chromium
-      - name: Playwright over HTTPS (no model key in production, so @model tests are skipped)
+      - name: Playwright over HTTPS (no model key in production, so @model tests are skipped; email goes over real SMTP to Mailpit)
         env:
           E2E_BASE_URL: https://localhost
           E2E_API_URL: https://localhost
           E2E_IGNORE_HTTPS_ERRORS: "1"
           E2E_EXPECT_CSP: "1"
+          E2E_MAILPIT_URL: http://localhost:8025
         run: pnpm e2e --grep-invert @model
       - name: Backup and restore
         working-directory: deploy
