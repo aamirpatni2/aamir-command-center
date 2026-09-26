@@ -75,8 +75,13 @@ services:
   worker:
     <<: *app
     command: ["node", "--import", "tsx", "apps/worker/src/index.ts"]
+    # The worker writes a heartbeat every 15 s while Redis and Postgres answer (apps/worker).
     healthcheck:
-      disable: true
+      test: ["CMD", "node", "-e", "const t=+require('fs').readFileSync('/tmp/acc-worker-heartbeat','utf8');process.exit(Date.now()-t<60000?0:1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
     depends_on:
       migrate:
         condition: service_completed_successfully

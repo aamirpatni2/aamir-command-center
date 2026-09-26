@@ -11,7 +11,7 @@ import {
   AUTOMATION_QUEUE, MetaAdsClient, createAutomationQueue, defaultMcpConfigPath, loadMcpConfig, McpClientManager, OAuthService, REPO_ROOT, createDefaultToolRegistry,
   createTaskQueue, embedderFromEnv, modelAvailability, RedisEventSink, resolveModel, TASK_QUEUE, webSearchFromEnv, type AutomationJob, type EngineDeps,
 } from "@acc/agents";
-import { markCrashed, processAutomationJob, processTaskJob, syncSchedules } from "./jobs.js";
+import { beat, markCrashed, processAutomationJob, processTaskJob, syncSchedules } from "./jobs.js";
 
 const env = loadEnv();
 const logger = pino({
@@ -72,8 +72,15 @@ syncSchedules(handle.db, automationQueue)
 
 logger.info({ queues: [TASK_QUEUE, AUTOMATION_QUEUE] }, "worker started");
 
+// Heartbeat for Docker's health check (deploy/docker-compose.yml): only while Redis and Postgres answer.
+const heartbeat = setInterval(() => {
+  void beat(handle.db, () => publisher.ping()).then((ok) => ok || logger.warn("heartbeat skipped: Redis or Postgres not answering"));
+}, 15_000);
+void beat(handle.db, () => publisher.ping());
+
 const shutdown = async (signal: string) => {
   logger.info({ signal }, "shutting down worker");
+  clearInterval(heartbeat);
   await worker.close();
   await automationWorker.close();
   await mcp.close();

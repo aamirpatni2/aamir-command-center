@@ -2,7 +2,8 @@
  * Job handlers for the worker, separated from process startup so they can be tested.
  */
 import type { Logger } from "pino";
-import { and, eq, isNull, schema, type Database } from "@acc/database";
+import { writeFile } from "node:fs/promises";
+import { and, eq, isNull, schema, sql, type Database } from "@acc/database";
 import {
   createWhatsappTriageTask, executeTask, handleEvent, handleSchedule, handleSweep, ruleFromRow, SWEEP_EVERY_MS, TRIAGE_JOB,
   type AutomationJob, type AutomationQueue, type EngineDeps, type ExecuteTaskDeps,
@@ -96,4 +97,21 @@ export async function syncSchedules(
   }
   await queue.queue.upsertJobScheduler("sweep", { every: SWEEP_EVERY_MS }, { name: "sweep", data: { kind: "sweep" } });
   return { schedules: wanted.size, removed };
+}
+
+/** Where the worker proves it's alive (Docker's health check reads it). */
+export const HEARTBEAT_FILE = process.env.WORKER_HEARTBEAT_FILE ?? "/tmp/acc-worker-heartbeat";
+
+/**
+ * Writes the heartbeat only when Redis (the queue) and Postgres both answer, so a worker that
+ * has lost either turns unhealthy instead of silently doing nothing.
+ */
+export async function beat(db: Database, redisPing: () => Promise<unknown>, file = HEARTBEAT_FILE): Promise<boolean> {
+  try {
+    await Promise.all([redisPing(), db.execute(sql`select 1`)]);
+    await writeFile(file, String(Date.now()));
+    return true;
+  } catch {
+    return false;
+  }
 }

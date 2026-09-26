@@ -4,7 +4,10 @@ import { createDb, eq, schema, type DbHandle } from "@acc/database";
 import { resetTestDatabase } from "@acc/database/testing";
 import { createDefaultToolRegistry, MemoryEventSink, MockProvider, ruleToRow, TRIAGE_JOB, type ExecuteTaskDeps } from "@acc/agents";
 import { ruleDefinitionSchema } from "@acc/shared";
-import { markCrashed, processAutomationJob, processTaskJob, syncSchedules } from "./jobs.js";
+import { mkdtempSync, readFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { beat, markCrashed, processAutomationJob, processTaskJob, syncSchedules } from "./jobs.js";
 
 const logger = pino({ level: "silent" });
 let h: DbHandle;
@@ -87,5 +90,15 @@ describe("automation jobs", () => {
     expect(out).toEqual({ schedules: 1, removed: ["rule:deleted-rule"] });
     expect(synced.map((s) => s.active).sort()).toEqual([false, true]);
     expect(upserts).toEqual(["sweep"]);
+  });
+});
+
+describe("heartbeat", () => {
+  it("is written only when Redis and Postgres both answer", async () => {
+    const file = join(mkdtempSync(join(tmpdir(), "acc-hb-")), "hb");
+    expect(await beat(h.db, async () => { throw new Error("redis down"); }, file)).toBe(false);
+    expect(existsSync(file)).toBe(false);
+    expect(await beat(h.db, async () => "PONG", file)).toBe(true);
+    expect(Date.now() - Number(readFileSync(file, "utf8"))).toBeLessThan(5_000);
   });
 });
