@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { and, burnPasswordCheck, eq, isNull, schema, verifyPassword, writeAudit, type Database } from "@acc/database";
-import { loginRequestSchema, permissionsFor, type Role, type SessionResponse } from "@acc/shared";
+import { z } from "zod";
+import { and, burnPasswordCheck, eq, hashPassword, isNull, schema, verifyPassword, writeAudit, type Database } from "@acc/database";
+import { loginRequestSchema, newPasswordSchema, permissionsFor, weakPasswordReason, type Role, type SessionResponse } from "@acc/shared";
 import { HttpError, parse, unauthorized } from "../lib/errors.js";
 import { requireAuth } from "../plugins/auth.js";
 import { auditMeta } from "../lib/audit.js";
@@ -69,6 +70,26 @@ export async function authRoutes(app: FastifyInstance, opts: AuthRouteOptions) {
         permissions: permissionsFor(role),
       };
       return res;
+    },
+  );
+
+  /** Change your own password: needs the current one; every other session is signed out. */
+  app.post(
+    "/api/auth/password",
+    { preHandler: requireAuth(), config: { rateLimit: { max: 10, timeWindow: "15 minutes", keyGenerator: (req) => `pw:${req.auth?.user.id ?? req.ip}` } } },
+    async (req) => {
+      const body = parse(z.object({ currentPassword: z.string().min(1).max(256), newPassword: newPasswordSchema }), req.body);
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.id, req.auth!.user.id));
+      if (!user || !(await verifyPassword(user.passwordHash, body.currentPassword))) {
+        await writeAudit(db, { ...auditMeta(req), action: "auth.password_change_failed", entityType: "user", entityId: req.auth!.user.id });
+        throw new HttpError(400, "INVALID_CREDENTIALS", "The current password is incorrect");
+      }
+      const problem = weakPasswordReason(body.newPassword, user.email, body.currentPassword);
+      if (problem) throw new HttpError(400, "WEAK_PASSWORD", problem, [{ path: "newPassword", message: problem }]);
+      await db.update(schema.users).set({ passwordHash: await hashPassword(body.newPassword) }).where(eq(schema.users.id, user.id));
+      const revoked = await app.sessions.revokeOthers(user.id, req.auth!.sessionId);
+      await writeAudit(db, { ...auditMeta(req), action: "auth.password_changed", entityType: "user", entityId: user.id, metadata: { otherSessionsRevoked: revoked } });
+      return { ok: true, otherSessionsRevoked: revoked };
     },
   );
 

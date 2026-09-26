@@ -22,7 +22,10 @@
     "dev:worker": "pnpm --filter @acc/worker dev",
     "eval:routing": "pnpm --filter @acc/agents eval:routing",
     "whatsapp:simulate": "pnpm --filter @acc/api whatsapp:simulate",
-    "lint": "pnpm typecheck"
+    "lint": "pnpm typecheck",
+    "security:secrets": "node scripts/secret-scan.mjs",
+    "security:audit": "pnpm audit --audit-level=moderate",
+    "security": "pnpm security:secrets && pnpm security:audit"
   },
   "devDependencies": {
     "@playwright/test": "~1.56.1",
@@ -33,5 +36,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server-filesystem": "2026.8.31"
+  },
+  "pnpm": {
+    "overrides": {
+      "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+    }
   }
 }

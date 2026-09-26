@@ -53,6 +53,7 @@ export async function setupTestApp(
     global: { max: 10_000, timeWindow: "1 minute" },
     loginFailures: { max: 1_000, windowMs: 60_000 },
     loginIp: { max: 1_000, timeWindow: "1 minute" },
+    agentRuns: { max: 10_000, windowMs: 60_000 },
   },
   envOverrides: Record<string, string> = {},
   extra: Pick<Parameters<typeof buildApp>[0], "whatsapp" | "mcp" | "oauthFetch" | "ads"> = {},

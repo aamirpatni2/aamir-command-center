@@ -50,7 +50,7 @@ export async function taskRoutes(app: FastifyInstance, opts: TaskRouteOptions) {
     model: modelAvailability(env),
   }));
 
-  app.post("/api/tasks", { preHandler: requireAuth("tasks:create") }, async (req, reply) => {
+  app.post("/api/tasks", { preHandler: [requireAuth("tasks:create"), app.agentRuns.guard] }, async (req, reply) => {
     const body = parse(createSchema, req.body);
     const availability = modelAvailability(env);
     if (!availability.available) throw new HttpError(503, "MODEL_NOT_CONFIGURED", availability.reason ?? "No model configured");

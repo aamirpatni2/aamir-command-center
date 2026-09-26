@@ -1,6 +1,6 @@
 import fp from "fastify-plugin";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { and, eq, gt, isNull, schema, type Database } from "@acc/database";
+import { ne, and, eq, gt, isNull, schema, type Database } from "@acc/database";
 import { hasPermission, type Permission, type PublicUser, type Role } from "@acc/shared";
 import { forbidden, HttpError, unauthorized } from "../lib/errors.js";
 import { hashToken, randomToken, safeEqual } from "../lib/tokens.js";
@@ -105,6 +105,16 @@ export class SessionService {
       .update(schema.sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt)));
+  }
+
+  /** Signs out every other session of the user (after a password change). Returns how many. */
+  async revokeOthers(userId: string, keepSessionId: string) {
+    const rows = await this.opts.db
+      .update(schema.sessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(schema.sessions.userId, userId), isNull(schema.sessions.revokedAt), ne(schema.sessions.id, keepSessionId)))
+      .returning({ id: schema.sessions.id });
+    return rows.length;
   }
 
   setCookie(reply: FastifyReply, token: string, expiresAt: Date) {

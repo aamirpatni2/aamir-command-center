@@ -7,6 +7,7 @@ import rateLimit from "@fastify/rate-limit";
 import type { Env } from "@acc/config";
 import type { Database } from "@acc/database";
 import { HttpError } from "./lib/errors.js";
+import { AgentRunLimiter } from "./lib/rate-limits.js";
 import { authPlugin } from "./plugins/auth.js";
 import { healthRoutes } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
@@ -37,6 +38,8 @@ export interface BuildAppOptions {
     global?: { max: number; timeWindow: string };
     loginFailures?: { max: number; windowMs: number };
     loginIp?: { max: number; timeWindow: string };
+    /** Requests that start agent runs, per user (cost control). */
+    agentRuns?: { max: number; windowMs: number };
   };
   logger?: boolean;
   /** Defaults to the BullMQ queue on REDIS_URL. Tests inject an in-memory queue. */
@@ -79,6 +82,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
 
   app.addHook("onSend", async (req, reply) => {
     reply.header("x-request-id", req.id);
+    // API responses carry personal data: never store them in shared or browser caches.
+    if (req.url.startsWith("/api/") && !reply.hasHeader("cache-control")) reply.header("cache-control", "no-store");
+    reply.header("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
   });
 
   await app.register(helmet, {
@@ -112,6 +118,16 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   });
 
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: { code: "NOT_FOUND", message: "Route not found" } }));
+
+  // Every registered route, for the security sweep test (auth / CSRF / RBAC on all endpoints).
+  const routeTable: { method: string; url: string }[] = [];
+  app.decorate("routeTable", routeTable);
+  app.addHook("onRoute", (r) => {
+    for (const method of [r.method].flat()) if (method !== "HEAD" && method !== "OPTIONS") routeTable.push({ method, url: r.url });
+  });
+
+  const runs = opts.rateLimit?.agentRuns ?? { max: 60, windowMs: 3600_000 };
+  app.decorate("agentRuns", new AgentRunLimiter(runs.max, runs.windowMs));
 
   await app.register(healthRoutes, { db });
   await app.register(authRoutes, {

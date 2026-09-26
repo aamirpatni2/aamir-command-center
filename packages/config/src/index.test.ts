@@ -25,6 +25,19 @@ describe("envSchema", () => {
     expect(r.success).toBe(false);
   });
 
+  it("production requires HTTPS URLs and separate secrets", () => {
+    const prod = { ...base, NODE_ENV: "production", PUBLIC_URL: "https://acc.example.com", WEB_ORIGINS: "https://acc.example.com" };
+    expect(envSchema.safeParse(prod).success).toBe(true);
+    expect(envSchema.safeParse({ ...prod, PUBLIC_URL: "http://acc.example.com" }).success).toBe(false);
+    expect(envSchema.safeParse({ ...prod, WEB_ORIGINS: "https://acc.example.com,http://evil.test" }).success).toBe(false);
+    expect(envSchema.safeParse({ ...prod, ACC_ENCRYPTION_KEY: base.SESSION_SECRET }).success).toBe(false);
+  });
+
+  it("rejects a malformed Meta ad account id (it's used in API paths)", () => {
+    expect(envSchema.safeParse({ ...base, META_AD_ACCOUNT_ID: "act_1234567890" }).success).toBe(true);
+    expect(envSchema.safeParse({ ...base, META_AD_ACCOUNT_ID: "123/../../me" }).success).toBe(false);
+  });
+
   it("requires DATABASE_URL", () => {
     const { DATABASE_URL: _omit, ...rest } = base;
     expect(envSchema.safeParse(rest).success).toBe(false);

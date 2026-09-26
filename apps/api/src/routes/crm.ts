@@ -245,7 +245,7 @@ export async function crmRoutes(app: FastifyInstance, opts: CrmRouteOptions) {
     };
   });
 
-  app.post("/api/conversations/:id/triage", { preHandler: requireAuth("tasks:create") }, async (req, reply) => {
+  app.post("/api/conversations/:id/triage", { preHandler: [requireAuth("tasks:create"), app.agentRuns.guard] }, async (req, reply) => {
     const { id } = parse(idParam, req.params);
     const availability = modelAvailability(env);
     if (!availability.available) throw new HttpError(503, "MODEL_NOT_CONFIGURED", availability.reason ?? "No model configured");

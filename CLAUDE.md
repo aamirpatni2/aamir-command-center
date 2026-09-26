@@ -43,6 +43,8 @@ Default model `claude-opus-5` (see docs/DECISIONS.md ADR-017); tests use `MockPr
 ESM, strict TS, `.js` import suffixes, small modules, comments only where the reason is non-obvious.
 Urdu content: natural Pakistani Urdu; keep technical terms (AI, API, MCP) in English.
 
+Security: every route needs `requireAuth(permission)` as its preHandler (the route sweep test fails otherwise; public routes are listed in `route-security.test.ts`). Endpoints that start agent runs add `app.agentRuns.guard`. Run `pnpm security` before pushing.
+
 ## UI rules
 Dark theme tokens only (no raw hex in components). Status = icon + label, never colour alone.
 Never show placeholder numbers: unbuilt screens say "arrives in Milestone N", empty data shows an empty state.

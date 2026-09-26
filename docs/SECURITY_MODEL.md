@@ -65,6 +65,12 @@
 - Meta Ads token must be `ads_read` only; no write endpoint exists.
 - "Needs you" shows names/phones to roles that can already read leads (`analytics:read`).
 
+## 2f. Hardening (as built, M13)
+- Audit log append-only enforced by a database trigger (UPDATE/DELETE/TRUNCATE refused for every role). Next step (M15): the app connects as a non-owner role so it can't drop the trigger.
+- Route sweep test: every registered route is checked for session, CSRF and viewer-can't-mutate; new routes are covered automatically.
+- Agent-run budget: 60 runs per user per hour across all endpoints that start agents (cost control).
+- `pnpm security` = secret scan of tracked files + dependency audit. Full checklist: docs/SECURITY_CHECKLIST.md.
+
 ## 3. Authentication
 - Email + password (Argon2id, 19 MiB memory, t=2, p=1).
 - Sessions: 32 random bytes → base64url token in the cookie; only `sha256(token)` is stored. Idle expiry 7 days, absolute expiry 30 days. Logout and "log out all devices" revoke rows.

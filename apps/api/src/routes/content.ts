@@ -149,7 +149,7 @@ export async function contentRoutes(app: FastifyInstance, opts: { db: Database }
     return { item: updated };
   });
 
-  app.post("/api/content/:id/status", { preHandler: requireAuth("content:read") }, async (req) => {
+  app.post("/api/content/:id/status", { preHandler: requireAuth("content:write") }, async (req) => {
     const { id } = parse(idParam, req.params);
     const body = parse(statusBody, req.body);
     const [item] = await db.select().from(schema.contentItems).where(and(eq(schema.contentItems.id, id), active));

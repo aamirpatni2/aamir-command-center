@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { and, asc, count, eq, hashPassword, isNull, schema, writeAudit, type Database } from "@acc/database";
-import { createUserRequestSchema, ROLES } from "@acc/shared";
-import { conflict, forbidden, notFound, parse } from "../lib/errors.js";
+import { createUserRequestSchema, ROLES, weakPasswordReason } from "@acc/shared";
+import { conflict, forbidden, HttpError, notFound, parse } from "../lib/errors.js";
 import { requireAuth } from "../plugins/auth.js";
 import { auditMeta } from "../lib/audit.js";
 
@@ -38,6 +38,8 @@ export async function userRoutes(app: FastifyInstance, opts: { db: Database }) {
     const body = parse(createUserRequestSchema, req.body);
     const existing = await db.select({ id: schema.users.id }).from(schema.users).where(and(eq(schema.users.email, body.email), activeUser));
     if (existing.length) throw conflict("A user with this email already exists");
+    const weak = weakPasswordReason(body.password, body.email);
+    if (weak) throw new HttpError(400, "WEAK_PASSWORD", weak, [{ path: "password", message: weak }]);
     const [user] = await db
       .insert(schema.users)
       .values({ email: body.email, name: body.name, role: body.role, passwordHash: await hashPassword(body.password) })

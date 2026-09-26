@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button, Card, StatusBadge } from "@acc/ui";
-import { api } from "../lib/api.js";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { KeyRound } from "lucide-react";
+import { Button, Card, Field, StatusBadge } from "@acc/ui";
+import { api, ApiError } from "../lib/api.js";
 import { useAuth } from "../lib/auth.js";
 import { PageHeader } from "../components/Layout.js";
 
@@ -17,6 +18,36 @@ const INTEGRATION_LABELS: Record<string, { label: string; milestone: number }> =
   meta_ads: { label: "Meta Ads (read-only)", milestone: 12 },
   notion: { label: "Notion", milestone: 11 },
 };
+
+function ChangePassword() {
+  const m = useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) => api<{ otherSessionsRevoked: number }>("/api/auth/password", { method: "POST", body }),
+  });
+  const [mismatch, setMismatch] = useState(false);
+  return (
+    <Card title="Change password" icon={<KeyRound className="size-4" />}>
+      <form
+        className="space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          const next = String(f.get("newPassword"));
+          if (next !== String(f.get("confirm"))) return setMismatch(true);
+          setMismatch(false);
+          m.mutate({ currentPassword: String(f.get("currentPassword")), newPassword: next }, { onSuccess: () => (e.target as HTMLFormElement).reset() });
+        }}
+      >
+        <Field label="Current password" name="currentPassword" type="password" autoComplete="current-password" required />
+        <Field label="New password (12+ characters)" name="newPassword" type="password" autoComplete="new-password" minLength={12} required />
+        <Field label="Repeat new password" name="confirm" type="password" autoComplete="new-password" minLength={12} required />
+        {mismatch && <p role="alert" className="text-sm text-status-critical">The new passwords don't match.</p>}
+        {m.isError && <p role="alert" className="text-sm text-status-critical">{m.error instanceof ApiError ? m.error.message : "Failed"}</p>}
+        {m.isSuccess && <p role="status" className="text-sm text-status-good">Password changed. {m.data.otherSessionsRevoked} other session(s) were signed out.</p>}
+        <Button type="submit" disabled={m.isPending}>Change password</Button>
+      </form>
+    </Card>
+  );
+}
 
 export function SettingsPage() {
   const { session, can } = useAuth();
@@ -51,6 +82,8 @@ export function SettingsPage() {
             <Button variant="secondary" onClick={() => void logoutAll()} disabled={busy}>Sign out of all devices</Button>
           </div>
         </Card>
+
+        <ChangePassword />
 
         {can("mcp:read") && (
           <Card title="Integrations">

@@ -65,7 +65,7 @@ export const envSchema = z
 
     /** Meta Marketing API, read-only (ads_read): campaign results on the Ads page. */
     META_ADS_ACCESS_TOKEN: optionalString,
-    META_AD_ACCOUNT_ID: optionalString,
+    META_AD_ACCOUNT_ID: optionalString.refine((v) => v === undefined || /^(act_)?\d{5,20}$/.test(v), "must be the numeric ad account id (optionally with act_)"),
 
     BRAVE_API_KEY: optionalString,
     TAVILY_API_KEY: optionalString,
@@ -83,6 +83,16 @@ export const envSchema = z
       if (env[key] === PLACEHOLDER || env[key].length < 32) {
         ctx.addIssue({ code: "custom", path: [key], message: "must be a real random secret (32+ chars) in production" });
       }
+    }
+    // OAuth redirects and session cookies must travel over HTTPS in production.
+    if (!env.PUBLIC_URL.startsWith("https://")) {
+      ctx.addIssue({ code: "custom", path: ["PUBLIC_URL"], message: "must be an https:// URL in production" });
+    }
+    for (const origin of env.WEB_ORIGINS) {
+      if (!origin.startsWith("https://")) ctx.addIssue({ code: "custom", path: ["WEB_ORIGINS"], message: `origin ${origin} must be https:// in production` });
+    }
+    if (env.SESSION_SECRET === env.ACC_ENCRYPTION_KEY) {
+      ctx.addIssue({ code: "custom", path: ["ACC_ENCRYPTION_KEY"], message: "must differ from SESSION_SECRET" });
     }
     if (env.ACC_ENABLE_MOCKS) {
       ctx.addIssue({ code: "custom", path: ["ACC_ENABLE_MOCKS"], message: "mocks cannot be enabled in production" });

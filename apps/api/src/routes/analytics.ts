@@ -74,7 +74,7 @@ export async function analyticsRoutes(app: FastifyInstance, opts: { db: Database
   });
 
   /** Asks the Analytics Agent to write the narrative; it saves the report through analytics.save_report. */
-  app.post("/api/reports/agent", { preHandler: requireAuth("tasks:create") }, async (req, reply) => {
+  app.post("/api/reports/agent", { preHandler: [requireAuth("tasks:create"), app.agentRuns.guard] }, async (req, reply) => {
     const body = parse(z.object({ preset: z.enum(PRESETS), period: z.enum(["daily", "weekly", "monthly", "custom"]) }), req.body);
     const range = toRange({ preset: body.preset });
     const instruction = `Write the ${body.period} report for ${range.from} to ${range.to} (preset ${body.preset}): call analytics.report with preset ${body.preset}, compare with the previous period, and save it with analytics.save_report (period ${body.period}, preset ${body.preset}). Lead with what changed and the 3 most useful next actions.`;

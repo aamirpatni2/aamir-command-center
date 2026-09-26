@@ -155,5 +155,12 @@ Each decision lists the alternatives and why the simplest production-ready optio
 ## ADR-043 — Meta Ads read-only
 - **Why**: spending money is the highest-risk action in the system. v1 uses an `ads_read` token and never writes; campaign changes would need an owner-only, approval-gated flow (not built).
 
+## ADR-044 — Append-only audit log enforced by the database
+- **Alternatives**: rely on the application never updating rows; a hash chain.
+- **Why**: a trigger stops accidental or malicious edits even from a bug or a raw SQL session, at no cost. A hash chain adds tamper-*evidence* but complicates concurrent writes; combined with a non-owner app role (M15) the trigger is sufficient for a single-business system.
+
+## ADR-045 — Security invariants tested by sweeping the route table
+- **Why**: per-route tests only cover routes someone remembered. Enumerating every registered route and asserting auth, CSRF and RBAC means a new endpoint without `requireAuth(permission)` fails CI immediately. It already caught one route that validated the body before checking permission.
+
 ## ADR-012 — Branching
 - **Decision**: Work is developed on `claude/intelligent-keller-d001ud` and merged into `main` through pull requests.
