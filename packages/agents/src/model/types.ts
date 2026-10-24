@@ -63,7 +63,7 @@ export interface ModelResponse {
 }
 
 export interface ModelProvider {
-  readonly id: "anthropic" | "openai" | "google" | "mock";
+  readonly id: "anthropic" | "openai" | "google" | "ollama" | "mock";
   /** True when results are not from a real model (mocks). Stored on every run. */
   readonly isMock: boolean;
   generate(req: ModelRequest, signal?: AbortSignal): Promise<ModelResponse>;

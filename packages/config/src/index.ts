@@ -48,8 +48,18 @@ export const envSchema = z
     SESSION_ABSOLUTE_TTL_DAYS: z.coerce.number().int().positive().default(30),
 
     ANTHROPIC_API_KEY: optionalString,
-    DEFAULT_MODEL_PROVIDER: z.enum(["anthropic", "openai", "google"]).default("anthropic"),
+    DEFAULT_MODEL_PROVIDER: z.enum(["anthropic", "openai", "google", "ollama"]).default("anthropic"),
     DEFAULT_MODEL: z.string().default("claude-opus-5"),
+    /** Free local models via Ollama (DEFAULT_MODEL_PROVIDER=ollama). From Docker: http://host.docker.internal:11434 */
+    OLLAMA_BASE_URL: optionalString.pipe(z.string().url().optional()),
+    OLLAMA_MODEL: z.string().default("qwen3:8b"),
+    OLLAMA_NUM_CTX: z.coerce.number().int().min(2048).max(262_144).default(16_384),
+    OLLAMA_TIMEOUT_SECONDS: z.coerce.number().int().min(10).max(3600).default(600),
+    /** Let thinking models reason first (slower; off by default). */
+    OLLAMA_THINK: z
+      .string()
+      .optional()
+      .transform((v) => v === "true"),
     OPENAI_API_KEY: optionalString,
     GOOGLE_AI_API_KEY: optionalString,
 
@@ -156,6 +166,7 @@ export function integrationStatus(env: NodeJS.ProcessEnv = process.env) {
     anthropic: has("ANTHROPIC_API_KEY"),
     openai: has("OPENAI_API_KEY"),
     google_ai: has("GOOGLE_AI_API_KEY"),
+    ollama: has("OLLAMA_BASE_URL"),
     whatsapp: has("WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN"),
     web_search: has("BRAVE_API_KEY") || has("TAVILY_API_KEY"),
     embeddings: has("VOYAGE_API_KEY"),

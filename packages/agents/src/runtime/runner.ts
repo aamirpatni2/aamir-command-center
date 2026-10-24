@@ -240,7 +240,8 @@ export class AgentRunner {
         latencyMs,
         inputTokens: usage.input,
         outputTokens: usage.output,
-        costMicroUsd: p.provider.isMock ? 0 : estimateCostMicroUsd(servedModel, usage.input, usage.output),
+        // Mock and local (Ollama) runs cost nothing.
+        costMicroUsd: p.provider.isMock || p.provider.id === "ollama" ? 0 : estimateCostMicroUsd(servedModel, usage.input, usage.output),
         toolCallCount,
         errorCode: result.errorCode ?? null,
         errorMessage: result.errorMessage ?? null,

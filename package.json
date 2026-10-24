@@ -31,9 +31,9 @@
   "devDependencies": {
     "@playwright/test": "~1.56.1",
     "@types/node": "^22.10.0",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "typescript": "~5.9.0",
-    "vitest": "^4.0.0"
+    "vitest": "^4.1.12"
   },
   "dependencies": {
     "@modelcontextprotocol/server-filesystem": "2026.8.31",
@@ -41,7 +41,10 @@
   },
   "pnpm": {
     "overrides": {
-      "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+      "@esbuild-kit/core-utils>esbuild": "^0.25.0",
+      "@modelcontextprotocol/sdk": "^1.32.0",
+      "hono": "^4.13.11",
+      "source-map-js": "^1.2.2"
     }
   }
 }

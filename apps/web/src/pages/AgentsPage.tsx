@@ -13,7 +13,7 @@ import { ModelBanner } from "./TasksPage.js";
 
 interface AgentsInfo {
   agents: { id: string; description: string; limitations: string | null; tools: string[]; model: string; effort: string | null; maxSteps: number }[];
-  model: { available: boolean; mock: boolean; reason?: string };
+  model: { available: boolean; mock: boolean; provider?: string; model?: string; reason?: string };
 }
 
 const STATUSES = ["", "QUEUED", "RUNNING", "WAITING_APPROVAL", "COMPLETED", "FAILED", "CANCELLED"];

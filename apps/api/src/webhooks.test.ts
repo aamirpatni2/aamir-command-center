@@ -4,6 +4,8 @@ import { count, eq, schema } from "@acc/database";
 import { setupTestApp, teardown, type TestContext } from "./test/helpers.js";
 
 const SECRET = "test-app-secret";
+// A recent message time: a fixed past date would start scoring as "no message for 7+ days".
+const RECENT = Math.floor(Date.now() / 1000) - 60;
 let ctx: TestContext;
 
 beforeAll(async () => {
@@ -41,7 +43,7 @@ describe("WhatsApp webhook", () => {
   });
 
   it("a signed message creates contact, conversation, message, scored lead, and queues triage", async () => {
-    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?", timestamp: 1_790_000_000 });
+    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?", timestamp: RECENT });
     const res = await post(body);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ status: "ok", messages: 1, newLeads: 1, triaged: 1 });
@@ -62,7 +64,7 @@ describe("WhatsApp webhook", () => {
   });
 
   it("webhook replay (identical signed body) is acknowledged but not processed again", async () => {
-    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?", timestamp: 1_790_000_000 });
+    const body = buildWhatsappTextPayload({ from: "923001112233", name: "Ali Khan", id: "wamid.1", text: "Salam! Course ki fee kitni hai aur next batch kab start hoga?", timestamp: RECENT });
     const res = await post(body);
     expect(res.json()).toEqual({ status: "duplicate" });
     expect(await n(schema.messages)).toBe(1);

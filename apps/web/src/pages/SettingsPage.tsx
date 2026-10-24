@@ -10,6 +10,7 @@ const INTEGRATION_LABELS: Record<string, { label: string; milestone: number }> =
   anthropic: { label: "Anthropic (Claude)", milestone: 3 },
   openai: { label: "OpenAI", milestone: 3 },
   google_ai: { label: "Google AI", milestone: 3 },
+  ollama: { label: "Ollama (free local models)", milestone: 16 },
   whatsapp: { label: "WhatsApp Cloud API", milestone: 5 },
   web_search: { label: "Web search (Brave / Tavily)", milestone: 8 },
   embeddings: { label: "Semantic search (Voyage AI)", milestone: 8 },

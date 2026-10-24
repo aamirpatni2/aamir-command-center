@@ -10,7 +10,7 @@ import type { TaskListItem } from "../lib/types.js";
 import { PageHeader } from "../components/Layout.js";
 
 interface AgentsInfo {
-  model: { available: boolean; mock: boolean; reason?: string };
+  model: { available: boolean; mock: boolean; provider?: string; model?: string; reason?: string };
 }
 
 const EXAMPLES = [
@@ -36,6 +36,14 @@ export function ModelBanner({ info }: { info?: AgentsInfo }) {
           <strong>Mock model.</strong> ANTHROPIC_API_KEY isn't set, so agents run on a clearly labelled simulator. Everything else
           (tools, database, approvals, logs) is real. Add the key to the server environment to use Claude.
         </span>
+      </p>
+    );
+  }
+  if (info.model.provider === "ollama") {
+    return (
+      <p className="mb-4 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
+        <strong className="text-ink">Free local model</strong> ({info.model.model}, via Ollama on your computer). No cost, but it is
+        slower than Claude and follows instructions less reliably, so check its work before you approve anything.
       </p>
     );
   }

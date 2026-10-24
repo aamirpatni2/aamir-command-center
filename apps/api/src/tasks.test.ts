@@ -32,7 +32,7 @@ describe("tasks API", () => {
     const ids = res.json().agents.map((a: { id: string }) => a.id);
     expect(ids).toEqual(["orchestrator", "sales", "whatsapp", "content", "research", "student", "marketing", "analytics", "course"]);
     expect(res.json().agents.find((a: { id: string }) => a.id === "research").limitations).toContain("BRAVE_API_KEY");
-    expect(res.json().model).toEqual({ available: true, mock: true });
+    expect(res.json().model).toEqual({ available: true, mock: true, provider: "mock", model: "mock" });
   });
 
   it("creates and enqueues a task (202)", async () => {
