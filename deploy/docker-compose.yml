@@ -18,6 +18,9 @@ x-app: &app
     WEB_ORIGINS: ${PUBLIC_URL}
   volumes:
     - app-data:/app/data
+  # Lets the app reach Ollama running on the host computer (OLLAMA_BASE_URL=http://host.docker.internal:11434).
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
   init: true
   restart: unless-stopped
 

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { AGENTS, expireTaskApprovals, modelAvailability, type TaskQueue } from "@acc/agents";
+import { AGENTS, expireTaskApprovals, modelAvailability, resolveModel, type TaskQueue } from "@acc/agents";
 import type { Env } from "@acc/config";
 import { and, asc, desc, eq, inArray, schema, sql, writeAudit, type Database } from "@acc/database";
 import { AGENT_IDS, TASK_STATUSES } from "@acc/shared";
@@ -37,6 +37,15 @@ const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED"]);
 export async function taskRoutes(app: FastifyInstance, opts: TaskRouteOptions) {
   const { db, env, queue, hub } = opts;
 
+  /** The model an agent would run on right now (with Ollama, every agent uses the local model). */
+  const modelFor = (selector?: { provider?: string; model?: string }) => {
+    try {
+      return resolveModel(env, selector).model;
+    } catch {
+      return selector?.model ?? env.DEFAULT_MODEL;
+    }
+  };
+
   app.get("/api/agents", { preHandler: requireAuth("tasks:read") }, async () => ({
     agents: Object.values(AGENTS).map((a) => ({
       id: a!.id,
@@ -44,7 +53,7 @@ export async function taskRoutes(app: FastifyInstance, opts: TaskRouteOptions) {
       limitations: a!.limitations ?? null,
       tools: a!.tools,
       maxSteps: a!.maxSteps,
-      model: a!.model?.model ?? env.DEFAULT_MODEL,
+      model: modelFor(a!.model),
       effort: a!.effort ?? null,
     })),
     model: modelAvailability(env),

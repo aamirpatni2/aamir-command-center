@@ -120,6 +120,25 @@ Then remove that line from your shell history (`history -d $(history 1 | awk '{p
 | Canva | Canva Developers → your integration | Redirect URL `https://<domain>/api/integrations/oauth/callback` |
 | Email (invites, reset links) | Your mail provider's SMTP settings | In `app.env`: `SMTP_URL=smtps://user:password@smtp.example.com:465` and `EMAIL_FROM=Aamir AI Command Center <team@yourdomain.com>`. With Gmail, create an *app password* (Google Account → Security → 2-Step Verification → App passwords) and use `smtps://you%40gmail.com:APP-PASSWORD@smtp.gmail.com:465`. Without it, the Team page uses temporary passwords. |
 
+### Free local models with Ollama (instead of Claude)
+
+The agents can run on a free model on your own computer instead of Claude. Nothing is sent to an AI company and nothing is billed. The trade-off: local models are slower, and they follow instructions and call tools less reliably than Claude, so read their drafts carefully before approving.
+
+1. Install **Ollama** from https://ollama.com/download (Windows, Mac or Linux) and start it.
+2. Download a model that supports tool calling. In a terminal (PowerShell or Git Bash): `ollama pull qwen3:8b` (about 5 GB; needs roughly 16 GB RAM). On a smaller laptop try `qwen3:4b`; with a strong GPU, `qwen3:14b` gives better results.
+3. In `deploy/app.env` set:
+   ```
+   DEFAULT_MODEL_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://host.docker.internal:11434
+   OLLAMA_MODEL=qwen3:8b
+   ```
+   `host.docker.internal` is how the app, running inside Docker, reaches Ollama on the same computer. If Ollama runs on another machine, use that machine's address and start Ollama there with `OLLAMA_HOST=0.0.0.0` (only on a trusted network: Ollama has no password).
+4. `./start-local.sh` (or `docker compose up -d`). **Settings → Integrations** shows *Ollama* as connected and the Tasks page says which local model is in use.
+
+`OLLAMA_NUM_CTX` (default 16384) is the context window: larger lets agents read more but needs more memory. `OLLAMA_TIMEOUT_SECONDS` (default 600) is how long one model call may take. `OLLAMA_THINK=true` lets thinking models such as Qwen3 reason before answering: often better results, but several times slower on a laptop. To switch back to Claude, set `DEFAULT_MODEL_PROVIDER=anthropic`. Ollama runs are recorded with cost 0.
+
+On a server, Ollama needs a machine with a GPU (or patience); for an always-on business setup Claude is usually the better choice.
+
 After changing `app.env`: `docker compose up -d` (restarts only what changed). The **Integrations** page shows what's configured and connected.
 
 ## 7. Backups

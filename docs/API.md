@@ -30,7 +30,7 @@ Base URL: `http://localhost:4000` (dev). All bodies are JSON (`content-type: app
 | POST | `/api/invites/lookup` | public (20/15 min per IP) | `{token}` → `{purpose, name, email, expiresAt}` or 400 `INVALID_LINK` |
 | POST | `/api/invites/accept` | public (20/15 min per IP) | `{token, password(12+)}` → `{ok, email, purpose}`; weak-password check before the link is used; single use; signs the person out everywhere; other open links revoked; audited |
 | GET | `/api/audit-logs` | `audit:read` | `?limit&before&action&entityType` → `{auditLogs, nextBefore}` |
-| GET | `/api/agents` | `tasks:read` | defined agents (description, current limitations, tools, model, effort, max steps) + model availability `{available, mock, reason?}` |
+| GET | `/api/agents` | `tasks:read` | defined agents (description, current limitations, tools, model, effort, max steps) + model availability `{available, mock, provider?, model?, reason?}`; each agent's `model` is the one it would run on now (with Ollama, the local model) |
 | POST | `/api/tasks` | `tasks:create` | `{input (3–4000 chars), title?}` → 202 `{task, mock}` and enqueues it. 503 `MODEL_NOT_CONFIGURED` (nothing created) or `QUEUE_UNAVAILABLE` (task marked FAILED) |
 | GET | `/api/tasks` | `tasks:read` | `?status&limit` |
 | GET | `/api/tasks/:id` | `tasks:read` | task (incl. `plan`, `result.issues`, `result.nextSteps`), plan `steps` with status, runs (with `stepId`/`parentRunId`), message timeline (system prompt body omitted), approvals |
